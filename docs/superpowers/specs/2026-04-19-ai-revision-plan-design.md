@@ -78,16 +78,16 @@ CREATE TABLE exams (
     date              DATE        NOT NULL,
     title             TEXT        NOT NULL,
     notes             TEXT,
-    annales_image_id  BIGINT      REFERENCES images(id) ON DELETE SET NULL,
+    annales_image_id  TEXT        REFERENCES images(id) ON DELETE SET NULL,
     created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_exams_user_active ON exams (user_id, date) WHERE date >= CURRENT_DATE;
+CREATE INDEX idx_exams_user_active ON exams (user_id, date);
 ```
 
 Constraints:
-- `date >= CURRENT_DATE` at insert time (enforced at the service layer, not in SQL — users can edit past exams for bookkeeping).
+- Exam date must be today or later at insert time (enforced at the service layer, not in SQL — users can edit past exams for bookkeeping).
 - Max active exams per user: `10` (service-layer limit; prevents runaway plan spam).
 - User must have viewer-or-higher access to `subject_id` — enforced on create.
 
@@ -139,7 +139,7 @@ When a card completes a training session on its plan day, a row is inserted. Tod
 
 ### 4.4 Quota extension (Spec A table)
 
-`ai_quota_daily` adds a `plan_used` column (default 0). No schema-breaking migration — existing rows default gracefully.
+`ai_quota_daily` adds `plan_calls` and `cross_subject_rank_calls` columns (default 0), parallel to the existing `prompt_calls` / `pdf_calls` / `check_calls` counters. No schema-breaking migration — existing rows default gracefully.
 
 ## 5. AI Contract
 
@@ -224,7 +224,7 @@ const FeatureCrossSubjectRank FeatureKey = "cross_subject_rank"
 ```
 POST /exams/:id/generate-plan
 → auth + ownership check (user owns exam)
-→ aiQuotaService.Debit(user, "plan", 1)  — refund on failure
+→ pipeline debits `plan_calls` only on successful completion (post-stream); failures never debit, so no refund step is required
 → crossSubjectShortlistService.ShortlistFor(examId, limit=30)
     SQL: find FCs in other accessible subjects sharing ≥2 keywords with any primary-subject FC
 → If any candidates exist:
@@ -243,7 +243,7 @@ POST /exams/:id/generate-plan
 → Emit final SSE event with plan summary
 ```
 
-Failure at any step refunds the `plan` quota and surfaces the error with context.
+Failure at any step surfaces the error with context. Quota is never debited on failure (the pipeline debits only on a successful stream that emitted at least one valid day item), so no refund is needed.
 
 ### 6.2 Cross-subject shortlist SQL
 
@@ -331,7 +331,7 @@ Reuses Spec A's `POST /upload-image` with `purpose: "exam_annales"`. Max 5 MB, m
 
 | Failure | Handling |
 |---------|----------|
-| User has no AI subscription | `403 ai_entitlement_required` (shared with Spec A). Frontend shows paywall. |
+| User has no AI subscription | `402 no_ai_access` (shared with Spec A; mapped from `ErrNoAIAccess` in `internal/myErrors`). Frontend shows paywall. |
 | `plan` quota exhausted | `429 quota_exhausted { kind: "plan" }`. Frontend shows quota-exhausted toast with reset time. |
 | Exam date is in the past | `400 exam_date_past`. Frontend blocks at form level. |
 | Subject has <5 flashcards | `400 subject_too_sparse`. Frontend shows helper text on the generate button. |
@@ -383,7 +383,7 @@ else:
 
 ### Integration (backend)
 - Full generate flow: exam + 10 primary FCs + 5 cross-subject candidates → plan persisted → `plan` counter incremented by 1.
-- Quota exhaustion: second generation on a fresh user with `plan_used=1` and limit `1` → 429, counter unchanged.
+- Quota exhaustion: second generation on a fresh user with `plan_calls=1` and limit `1` → 429, counter unchanged.
 - Annales flow: upload PDF → generate → `pdf.pagesUsed` incremented by page count.
 - Exam delete: plan + progress rows cascade away.
 - Regeneration preserves progress: mark 2 cards done, regenerate → `revision_plan_progress` rows untouched.
