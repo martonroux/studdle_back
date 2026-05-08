@@ -21,6 +21,9 @@ CREATE TABLE IF NOT EXISTS exams (
     created_at        TIMESTAMPTZ  NOT NULL DEFAULT now(),
     updated_at        TIMESTAMPTZ  NOT NULL DEFAULT now()
 );
+-- Plain (non-partial) index: Spec B §4.1 calls for WHERE date >= CURRENT_DATE,
+-- but Postgres rejects CURRENT_DATE in index predicates (STABLE, not IMMUTABLE).
+-- The application query filters by date instead.
 CREATE INDEX IF NOT EXISTS idx_exams_user_active ON exams (user_id, date);
 
 CREATE TABLE IF NOT EXISTS revision_plans (
