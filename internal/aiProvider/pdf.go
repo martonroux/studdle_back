@@ -140,3 +140,32 @@ func PDFPageCount(pdfBytes []byte) (int, error) {
 
 	return doc.NumPage(), nil
 }
+
+// PDFToText extracts the per-page text content of pdfBytes.
+// Returns one string per page in source order. The text content is
+// what go-fitz's text-extraction layer produces — useful for the
+// text-mode flashcard generation path when image-mode is not viable.
+func PDFToText(ctx context.Context, pdfBytes []byte) ([]string, error) {
+	if len(pdfBytes) == 0 {
+		return nil, fmt.Errorf("empty pdf bytes")
+	}
+	doc, err := fitz.NewFromMemory(pdfBytes)
+	if err != nil {
+		return nil, fmt.Errorf("open pdf:\n%w", err)
+	}
+	defer doc.Close()
+
+	n := doc.NumPage()
+	pages := make([]string, n)
+	for i := 0; i < n; i++ {
+		if ctx.Err() != nil {
+			return nil, ctx.Err()
+		}
+		text, err := doc.Text(i)
+		if err != nil {
+			return nil, fmt.Errorf("extract text page %d:\n%w", i, err)
+		}
+		pages[i] = text
+	}
+	return pages, nil
+}

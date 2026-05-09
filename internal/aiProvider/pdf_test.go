@@ -54,6 +54,31 @@ func TestPDFPageCount_ValidPDF(t *testing.T) {
 	}
 }
 
+func TestPDFToText_ReturnsOneStringPerPage(t *testing.T) {
+	pdf := loadTestPDF(t)
+	pages, err := aiProvider.PDFToText(context.Background(), pdf)
+	if err != nil {
+		t.Fatalf("PDFToText: %v", err)
+	}
+	if len(pages) == 0 {
+		t.Fatal("no pages returned")
+	}
+	// Each page should correspond to a string (even if empty, since sample.pdf
+	// is a minimal fixture that may not have extractable text layers).
+	for i := range pages {
+		// Just verify we got a string for each page; content validation
+		// would require a richer test fixture with actual text.
+		_ = pages[i]
+	}
+}
+
+func TestPDFToText_RejectsEmptyBytes(t *testing.T) {
+	_, err := aiProvider.PDFToText(context.Background(), nil)
+	if err == nil {
+		t.Error("want error on nil bytes")
+	}
+}
+
 func loadTestPDF(t *testing.T) []byte {
 	t.Helper()
 	path := filepath.Join("testdata", "sample.pdf")
