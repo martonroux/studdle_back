@@ -41,6 +41,19 @@ var ErrQuotaExhausted = errors.New("quota exhausted")
 // ErrPdfTooLarge indicates a PDF would exceed the remaining page quota.
 var ErrPdfTooLarge = errors.New("pdf too large for remaining quota")
 
+// ErrPDFImageModeUnavailable indicates image-mode generation is not viable
+// for this PDF (too many pages, or provider rejected it as too large) and
+// the user should be offered a text-mode retry.
+var ErrPDFImageModeUnavailable = errors.New("pdf image mode unavailable")
+
+// ErrPDFTooManyPages indicates a text-mode PDF exceeds the per-request
+// page cap. Not recoverable — the user is already in text mode.
+var ErrPDFTooManyPages = errors.New("pdf has too many pages for text mode")
+
+// ErrPDFTextTooLong indicates the extracted text from a text-mode PDF
+// exceeds the per-request character cap. Not recoverable.
+var ErrPDFTextTooLong = errors.New("extracted pdf text exceeds character cap")
+
 // ErrAIProvider indicates an upstream AI provider failure.
 var ErrAIProvider = errors.New("ai provider error")
 
