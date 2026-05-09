@@ -321,3 +321,45 @@ func TestRun_MalformedOutputNoTransparentRetry(t *testing.T) {
 		t.Errorf("emitted = %d, want 0", emitted)
 	}
 }
+
+func TestRun_ImageModeOverflow_SurfacesPDFImageModeUnavailable(t *testing.T) {
+	pool := testutil.OpenTestDB(t)
+	testutil.Reset(t, pool)
+	u := testutil.NewVerifiedUser(t, pool)
+	testutil.GiveAIAccess(t, pool, u.ID)
+	subj := testutil.NewSubject(t, pool, u.ID)
+
+	cli := &testutil.FakeAIClient{
+		Err: errors.New("prompt is too long: 250000 tokens > 200000 maximum"),
+	}
+	svc := newPipelineSvc(pool, cli)
+
+	req := aipipeline.AIRequest{
+		UserID:    u.ID,
+		Feature:   aipipeline.FeatureGenerateFromPDF,
+		SubjectID: subj.ID,
+		Prompt:    "anything",
+		Schema:    json.RawMessage(`{"type":"object"}`),
+		PDFPages:  31,
+		Images:    []aiProvider.ImagePart{{MediaType: "image/jpeg", Data: []byte{0xff, 0xd8}}},
+		Metadata:  map[string]any{"mode": "image"},
+	}
+
+	ch, _, err := svc.RunStructuredGeneration(context.Background(), req)
+	if err != nil {
+		t.Fatalf("run: %v", err)
+	}
+
+	var got aipipeline.AIChunk
+	for c := range ch {
+		if c.Kind == aipipeline.ChunkError {
+			got = c
+		}
+	}
+	if got.Kind != aipipeline.ChunkError {
+		t.Fatalf("no ChunkError received from stream")
+	}
+	if !errors.Is(got.Err, myErrors.ErrPDFImageModeUnavailable) {
+		t.Errorf("ChunkError.Err = %v, want errors.Is(ErrPDFImageModeUnavailable)", got.Err)
+	}
+}
