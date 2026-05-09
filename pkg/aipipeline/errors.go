@@ -82,3 +82,45 @@ func isWellFormedObject(b []byte) bool {
 	var m map[string]json.RawMessage
 	return json.Unmarshal(b, &m) == nil
 }
+
+// classifyProviderError maps a raw provider error to ErrPDFImageModeUnavailable
+// when the call carried image content and the error matches a known
+// "context window / payload too large" pattern. Otherwise the error is
+// returned unchanged.
+//
+// Pattern set is conservative: tighten or widen as we observe real-world
+// Anthropic responses in production.
+func classifyProviderError(err error, hadImages bool) error {
+	if err == nil {
+		return nil
+	}
+	if !hadImages {
+		return err
+	}
+	if !looksLikeContextOverflow(err) {
+		return err
+	}
+	return &myErrors.AppError{
+		Code:    "pdf_image_mode_unavailable",
+		Message: "PDF too large for image-mode generation; retry with mode=text",
+		Wrapped: myErrors.ErrPDFImageModeUnavailable,
+	}
+}
+
+// looksLikeContextOverflow checks the error string for known overflow markers.
+func looksLikeContextOverflow(err error) bool {
+	s := strings.ToLower(err.Error())
+	for _, needle := range []string{
+		"prompt is too long",
+		"context_length",
+		"context window",
+		"too many tokens",
+		"request_too_large",
+		"413",
+	} {
+		if strings.Contains(s, needle) {
+			return true
+		}
+	}
+	return false
+}
