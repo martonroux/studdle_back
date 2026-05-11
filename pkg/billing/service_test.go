@@ -13,7 +13,7 @@ func TestGrantComp_InsertsActiveCompRow(t *testing.T) {
 	pool := testutil.OpenTestDB(t)
 	testutil.Reset(t, pool)
 	u := testutil.NewVerifiedUser(t, pool)
-	svc := pkgbilling.NewService(pool, billing.NoopClient{})
+	svc := pkgbilling.NewService(pool, billing.NoopClient{}, pkgbilling.PriceMap{})
 
 	if err := svc.GrantComp(context.Background(), u.ID, true); err != nil {
 		t.Fatalf("GrantComp(true): %v", err)
@@ -30,7 +30,7 @@ func TestGrantComp_RevokesByMarkingCanceled(t *testing.T) {
 	pool := testutil.OpenTestDB(t)
 	testutil.Reset(t, pool)
 	u := testutil.NewVerifiedUser(t, pool)
-	svc := pkgbilling.NewService(pool, billing.NoopClient{})
+	svc := pkgbilling.NewService(pool, billing.NoopClient{}, pkgbilling.PriceMap{})
 
 	if err := svc.GrantComp(context.Background(), u.ID, true); err != nil {
 		t.Fatalf("grant: %v", err)
@@ -50,7 +50,7 @@ func TestGrantComp_IdempotentOnDoubleGrant(t *testing.T) {
 	pool := testutil.OpenTestDB(t)
 	testutil.Reset(t, pool)
 	u := testutil.NewVerifiedUser(t, pool)
-	svc := pkgbilling.NewService(pool, billing.NoopClient{})
+	svc := pkgbilling.NewService(pool, billing.NoopClient{}, pkgbilling.PriceMap{})
 
 	if err := svc.GrantComp(context.Background(), u.ID, true); err != nil {
 		t.Fatalf("grant1: %v", err)
@@ -72,7 +72,7 @@ func TestGrantComp_WritesStatusComped(t *testing.T) {
 	testutil.Reset(t, pool)
 	u := testutil.NewVerifiedUser(t, pool)
 
-	svc := pkgbilling.NewService(pool, billing.NoopClient{})
+	svc := pkgbilling.NewService(pool, billing.NoopClient{}, pkgbilling.PriceMap{})
 	if err := svc.GrantComp(context.Background(), u.ID, true); err != nil {
 		t.Fatalf("grant: %v", err)
 	}

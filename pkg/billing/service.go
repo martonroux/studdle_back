@@ -15,12 +15,16 @@ import (
 type Service struct {
 	db       *pgxpool.Pool         // db is the shared pool
 	provider billingadapter.Client // provider is the underlying billing adapter
+	prices   PriceMap              // prices maps Stripe price ids ↔ local Plan
 }
 
-// NewService constructs a Service.
-func NewService(db *pgxpool.Pool, provider billingadapter.Client) *Service {
-	return &Service{db: db, provider: provider}
+// NewService constructs a Service with a PriceMap.
+func NewService(db *pgxpool.Pool, provider billingadapter.Client, prices PriceMap) *Service {
+	return &Service{db: db, provider: provider, prices: prices}
 }
+
+// Prices exposes the PriceMap to callers (handlers) that need to read it.
+func (s *Service) Prices() PriceMap { return s.prices }
 
 // CreateCheckoutSession returns a URL the user must visit to pay.
 // Stub: not implemented until Spec C.
