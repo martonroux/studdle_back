@@ -37,6 +37,7 @@ func TestBillingSchema_MatchesSpec(t *testing.T) {
 	requireColumn(t, pool, "user_subscriptions", "trial_end")
 	requireColumn(t, pool, "user_subscriptions", "paused_at")
 	requireColumn(t, pool, "billing_events", "livemode")
+	requireColumn(t, pool, "billing_events", "event_type")
 
 	var nullable string
 	err = pool.QueryRow(ctx, `
@@ -66,6 +67,31 @@ func TestBillingSchema_MatchesSpec(t *testing.T) {
 	`, u.ID)
 	if err != nil {
 		t.Fatalf("status='comped' should pass CHECK: %v", err)
+	}
+}
+
+// TestBillingSchema_RejectsOldCompStatus asserts the CHECK constraint rejects
+// the pre-Spec-C literal status='comp' (it was renamed to 'comped').
+func TestBillingSchema_RejectsOldCompStatus(t *testing.T) {
+	pool := testutil.OpenTestDB(t)
+	testutil.Reset(t, pool)
+	ctx := context.Background()
+
+	u := testutil.NewVerifiedUser(t, pool)
+
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatalf("begin: %v", err)
+	}
+	defer tx.Rollback(ctx)
+
+	// status='comp' (old literal) must be rejected
+	_, err = tx.Exec(ctx, `
+		INSERT INTO user_subscriptions (user_id, plan, status)
+		SELECT id, 'comp', 'comp' FROM users WHERE id = $1
+	`, u.ID)
+	if err == nil {
+		t.Fatal("status='comp' should be rejected by CHECK constraint")
 	}
 }
 

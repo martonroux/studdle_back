@@ -39,7 +39,7 @@ func (s *Service) HandleWebhook(ctx context.Context, signature string, body []by
 }
 
 // GrantComp inserts or revokes a complimentary (comp) AI subscription for uid.
-// active=true upserts a row with plan='comp', status='comp'.
+// active=true upserts a row with plan='comp', status='comped'.
 // active=false marks any existing comp row as status='canceled'.
 // Leaves Stripe-originated rows (plan='pro_monthly' / 'pro_annual') untouched.
 func (s *Service) GrantComp(ctx context.Context, uid int64, active bool) error {
@@ -49,11 +49,11 @@ func (s *Service) GrantComp(ctx context.Context, uid int64, active bool) error {
 	return s.cancelComp(ctx, uid)
 }
 
-// upsertComp inserts a comp row if absent, or resets an existing comp row to status='comp'.
+// upsertComp inserts a comp row if absent, or resets an existing comp row to status='comped'.
 func (s *Service) upsertComp(ctx context.Context, uid int64) error {
 	const upd = `
         UPDATE user_subscriptions
-        SET status = 'comp', updated_at = now()
+        SET status = 'comped', updated_at = now()
         WHERE user_id = $1 AND plan = 'comp'
     `
 	tag, err := s.db.Exec(ctx, upd, uid)
@@ -70,7 +70,7 @@ func (s *Service) upsertComp(ctx context.Context, uid int64) error {
 func (s *Service) insertComp(ctx context.Context, uid int64) error {
 	const ins = `
         INSERT INTO user_subscriptions (user_id, plan, status)
-        SELECT $1, 'comp', 'comp'
+        SELECT $1, 'comp', 'comped'
         WHERE NOT EXISTS (
             SELECT 1 FROM user_subscriptions WHERE user_id = $1 AND plan = 'comp'
         )

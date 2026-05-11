@@ -65,3 +65,29 @@ func TestGrantComp_IdempotentOnDoubleGrant(t *testing.T) {
 		t.Errorf("comp-row count = %d, want 1", n)
 	}
 }
+
+// TestGrantComp_WritesStatusComped verifies the post-schema literal change.
+func TestGrantComp_WritesStatusComped(t *testing.T) {
+	pool := testutil.OpenTestDB(t)
+	testutil.Reset(t, pool)
+	u := testutil.NewVerifiedUser(t, pool)
+
+	svc := pkgbilling.NewService(pool, billing.NoopClient{})
+	if err := svc.GrantComp(context.Background(), u.ID, true); err != nil {
+		t.Fatalf("grant: %v", err)
+	}
+
+	var status, plan string
+	err := pool.QueryRow(context.Background(),
+		`SELECT status, plan FROM user_subscriptions WHERE user_id = $1`, u.ID,
+	).Scan(&status, &plan)
+	if err != nil {
+		t.Fatalf("query: %v", err)
+	}
+	if status != "comped" {
+		t.Fatalf("status = %q, want comped", status)
+	}
+	if plan != "comp" {
+		t.Fatalf("plan = %q, want comp", plan)
+	}
+}

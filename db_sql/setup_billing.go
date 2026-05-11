@@ -56,7 +56,13 @@ $$;
 `
 
 // setupBilling creates user_subscriptions, billing_events, and user_has_ai_access.
-// Idempotent: re-running on an existing schema is a no-op.
+// Idempotent for fresh databases: re-running on an existing schema is a no-op.
+//
+// NOTE (Spec C §4.4): this function uses CREATE TABLE IF NOT EXISTS, which does
+// NOT alter pre-existing tables. Production deployments that previously ran the
+// Spec A scaffold of these tables must drop both tables (or run a manual ALTER
+// script) before bringing up this schema. Pre-launch, the project drops+recreates
+// the DB on each release, so no migration is required.
 func setupBilling(ctx context.Context, pool *pgxpool.Pool) error {
 	if _, err := pool.Exec(ctx, billingSchema); err != nil {
 		return fmt.Errorf("exec billing schema:\n%w", err)
