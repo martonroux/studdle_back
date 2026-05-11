@@ -20,6 +20,7 @@ type BillingHandler struct {
 	users          *user.Service    // users is used to fetch the caller's email
 	billingPageURL string           // billingPageURL is the Stripe checkout success redirect
 	pricingPageURL string           // pricingPageURL is the Stripe checkout cancel redirect
+	expectLive     bool             // expectLive mirrors STRIPE_MODE=="live"
 }
 
 // NewBillingHandler constructs a BillingHandler.
@@ -84,8 +85,29 @@ func (h *BillingHandler) Portal(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, map[string]string{"url": url})
 }
 
-// Webhook handles POST /billing/webhook (Stripe signed payload).
+// SetStripeLivemode sets the expected livemode flag used in webhook validation.
+func (h *BillingHandler) SetStripeLivemode(live bool) { h.expectLive = live }
+
+// Webhook handles POST /billing/webhook.
+// Public route: the request is authenticated by Stripe-Signature, not by JWT.
 func (h *BillingHandler) Webhook(w http.ResponseWriter, r *http.Request) {
-	_, _ = io.Copy(io.Discard, r.Body)
-	httpx.WriteError(w, myErrors.ErrNotImplemented)
+	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, 1<<20))
+	if err != nil {
+		http.Error(w, "body read failed", http.StatusBadRequest)
+		return
+	}
+	cfg := billing.WebhookConfig{
+		ExpectLivemode: h.expectLive,
+		Body:           body,
+		Signature:      r.Header.Get("Stripe-Signature"),
+	}
+	if err := h.svc.HandleWebhook(r.Context(), cfg); err != nil {
+		if errors.Is(err, billing.ErrLivemodeMismatch) {
+			http.Error(w, "livemode mismatch", http.StatusBadRequest)
+			return
+		}
+		http.Error(w, "webhook error: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
 }
