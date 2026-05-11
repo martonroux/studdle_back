@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -53,6 +54,77 @@ func (h *BillingHandler) limiterFor(uid int64) *rate.Limiter {
 	return l
 }
 
+// subscriptionResponse is the JSON shape returned by GET /billing/subscription.
+type subscriptionResponse struct {
+	Status            string  `json:"status"`
+	Plan              *string `json:"plan"`
+	CurrentPeriodEnd  *string `json:"currentPeriodEnd"`
+	TrialEnd          *string `json:"trialEnd"`
+	CancelAtPeriodEnd bool    `json:"cancelAtPeriodEnd"`
+	IsActive          bool    `json:"isActive"`
+}
+
+// GetSubscription handles GET /billing/subscription.
+func (h *BillingHandler) GetSubscription(w http.ResponseWriter, r *http.Request) {
+	uid := authctx.UID(r.Context())
+	if uid == 0 {
+		httpx.WriteError(w, myErrors.ErrUnauthenticated)
+		return
+	}
+	h.writeSubscriptionResponse(r.Context(), w, uid)
+}
+
+// writeSubscriptionResponse renders the subscription read shape.
+// Shared by GetSubscription and Refresh.
+func (h *BillingHandler) writeSubscriptionResponse(ctx context.Context, w http.ResponseWriter, uid int64) {
+	sub, err := h.svc.GetSubscription(ctx, uid)
+	if errors.Is(err, billing.ErrSubscriptionNotFound) {
+		httpx.WriteJSON(w, http.StatusOK, subscriptionResponse{Status: "none"})
+		return
+	}
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	resp := subscriptionResponse{
+		Status:            string(sub.Status),
+		CancelAtPeriodEnd: sub.CancelAtPeriodEnd,
+		IsActive:          sub.IsActive(time.Now()),
+	}
+	if sub.Plan != "" {
+		p := string(sub.Plan)
+		resp.Plan = &p
+	}
+	if sub.CurrentPeriodEnd != nil {
+		ts := sub.CurrentPeriodEnd.UTC().Format(time.RFC3339)
+		resp.CurrentPeriodEnd = &ts
+	}
+	if sub.TrialEnd != nil {
+		ts := sub.TrialEnd.UTC().Format(time.RFC3339)
+		resp.TrialEnd = &ts
+	}
+	httpx.WriteJSON(w, http.StatusOK, resp)
+}
+
+// planTile describes one plan for the public pricing UI.
+type planTile struct {
+	Plan        string  `json:"plan"`
+	PriceEur    float64 `json:"priceEur"`
+	Interval    string  `json:"interval"`
+	DiscountPct *int    `json:"discountPct,omitempty"`
+}
+
+// GetPlans handles GET /billing/plans.
+// Public: prices are config-driven and safe to expose.
+func (h *BillingHandler) GetPlans(w http.ResponseWriter, r *http.Request) {
+	discount := 29
+	tiles := []planTile{
+		{Plan: "pro_monthly", PriceEur: 6.99, Interval: "month"},
+		{Plan: "pro_annual", PriceEur: 59.99, Interval: "year", DiscountPct: &discount},
+	}
+	httpx.WriteJSON(w, http.StatusOK, tiles)
+}
+
 // Refresh handles POST /billing/refresh.
 func (h *BillingHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 	uid := authctx.UID(r.Context())
@@ -68,7 +140,7 @@ func (h *BillingHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, err)
 		return
 	}
-	httpx.WriteJSON(w, http.StatusOK, map[string]string{"status": "refreshed"})
+	h.writeSubscriptionResponse(r.Context(), w, uid)
 }
 
 // checkoutInput is the request body for POST /billing/checkout.

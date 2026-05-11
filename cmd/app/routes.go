@@ -55,6 +55,7 @@ func registerPublicRoutes(mux *http.ServeMux, d *deps) {
 	mux.HandleFunc("GET /verify-email", emailVerH.Verify)
 	mux.HandleFunc("GET /images/{id}", imgH.Serve)
 	mux.HandleFunc("POST /billing/webhook", billH.Webhook)
+	mux.HandleFunc("GET /billing/plans", billH.GetPlans)
 	mux.HandleFunc("GET /docs", docsH.UI)
 	mux.HandleFunc("GET /openapi.yaml", docsH.Spec)
 }
@@ -111,6 +112,7 @@ func registerAuthSocialRoutes(mux *http.ServeMux, d *deps, auth func(http.Handle
 	mux.Handle("POST /training-session-record", auth(gamH.RecordSession))
 	mux.Handle("GET /user-stats", auth(gamH.Stats))
 	mux.Handle("GET /achievements", auth(gamH.Achievements))
+	mux.Handle("GET /billing/subscription", auth(billH.GetSubscription))
 	mux.Handle("POST /billing/checkout", auth(billH.Checkout))
 	mux.Handle("POST /billing/portal", auth(billH.Portal))
 	mux.Handle("POST /billing/refresh", auth(billH.Refresh))
@@ -179,4 +181,8 @@ func registerStubRoutes(mux *http.ServeMux, d *deps, av func(http.HandlerFunc) h
 func registerAdminRoutes(mux *http.ServeMux, d *deps, adm func(http.HandlerFunc) http.Handler) {
 	adminAIH := handler.NewAdminAIHandler(d.billing, d.access)
 	mux.Handle("POST /admin/grant-ai-access", adm(adminAIH.GrantAIAccess))
+
+	adminBillH := handler.NewAdminBillingHandler(d.billing, d.access)
+	mux.Handle("POST /admin/comp-subscription", adm(adminBillH.Grant))
+	mux.Handle("DELETE /admin/comp-subscription", adm(adminBillH.Revoke))
 }
