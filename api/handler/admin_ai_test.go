@@ -74,7 +74,7 @@ func TestGrantAIAccess_RejectsNonAdmin(t *testing.T) {
 func newAdminAIServer(t *testing.T, pool *pgxpool.Pool) http.Handler {
 	t.Helper()
 	signer := jwtsigner.NewSigner("a-minimum-32-byte-secret-xxxxxxxxxx", "studbud-test", time.Hour)
-	billSvc := pkgbilling.NewService(pool, billing.NoopClient{})
+	billSvc := pkgbilling.NewService(pool, billing.NoopClient{}, pkgbilling.PriceMap{})
 	accSvc := access.NewService(pool)
 	h := handler.NewAdminAIHandler(billSvc, accSvc)
 

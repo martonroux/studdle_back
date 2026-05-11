@@ -224,7 +224,10 @@ func buildStubServices(cfg *config.Config, pool *pgxpool.Pool, inf infra, dom do
 		quiz:    quiz.NewService(pool),
 		plan:    pkgplan.NewService(pool, ai, dom.exam, dom.image, dom.access, cfg.AIModel),
 		duel:    duel.NewService(pool, inf.hub),
-		billing: pkgbilling.NewService(pool, inf.billing),
+		billing: pkgbilling.NewService(pool, inf.billing, pkgbilling.PriceMap{
+			Monthly: cfg.StripePriceProMonth,
+			Annual:  cfg.StripePriceProAnnual,
+		}),
 	}
 }
 

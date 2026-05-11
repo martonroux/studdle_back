@@ -55,7 +55,7 @@ func newAIQuotaServer(t *testing.T, pool *pgxpool.Pool) http.Handler {
 	signer := jwtsigner.NewSigner("a-minimum-32-byte-secret-xxxxxxxxxx", "studbud-test", time.Hour)
 	acc := access.NewService(pool)
 	ai := aipipeline.NewService(pool, aiProvider.NoopClient{}, acc, aipipeline.DefaultQuotaLimits(), "test-model")
-	_ = pkgbilling.NewService(pool, billing.NoopClient{})
+	_ = pkgbilling.NewService(pool, billing.NoopClient{}, pkgbilling.PriceMap{})
 	h := handler.NewAIHandler(ai)
 	mux := http.NewServeMux()
 	stack := middleware.Chain(middleware.Auth(signer))
