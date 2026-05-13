@@ -16,6 +16,7 @@ type quotaRow struct {
 	CheckCalls            int // CheckCalls is today's check-flashcard count
 	PlanCalls             int // PlanCalls is today's revision-plan generation count
 	CrossSubjectRankCalls int // CrossSubjectRankCalls is today's cross-subject rank count
+	QuizCalls             int // QuizCalls is today's quiz generation count
 }
 
 // QuotaBucket is one feature's used/limit/reset tuple as surfaced to clients.
@@ -59,7 +60,7 @@ func (s *Service) readOrCreateQuotaRow(ctx context.Context, uid int64) (quotaRow
 		return quotaRow{}, fmt.Errorf("ensure quota row:\n%w", err)
 	}
 	var row quotaRow
-	err := s.db.QueryRow(ctx, sqlSelectQuotaRow, uid).Scan(&row.PromptCalls, &row.PDFCalls, &row.PDFPages, &row.CheckCalls, &row.PlanCalls, &row.CrossSubjectRankCalls)
+	err := s.db.QueryRow(ctx, sqlSelectQuotaRow, uid).Scan(&row.PromptCalls, &row.PDFCalls, &row.PDFPages, &row.CheckCalls, &row.PlanCalls, &row.CrossSubjectRankCalls, &row.QuizCalls)
 	if err != nil {
 		return quotaRow{}, fmt.Errorf("select quota row:\n%w", err)
 	}
@@ -90,6 +91,10 @@ func checkAgainstLimitsPure(feat FeatureKey, used map[string]int, limits QuotaLi
 		if used["plan_calls"] >= limits.PlanCalls {
 			return quotaExhausted("plan")
 		}
+	case FeatureGenerateQuiz:
+		if used["quiz_calls"] >= limits.QuizCalls {
+			return quotaExhausted("quiz")
+		}
 	case FeatureCrossSubjectRank:
 		return nil // sub-step of plan generation; no quota check
 	}
@@ -105,6 +110,7 @@ func checkAgainstLimits(row quotaRow, feat FeatureKey, pdfPages int, lim QuotaLi
 		"check_calls":              row.CheckCalls,
 		"plan_calls":               row.PlanCalls,
 		"cross_subject_rank_calls": row.CrossSubjectRankCalls,
+		"quiz_calls":               row.QuizCalls,
 	}
 	return checkAgainstLimitsPure(feat, used, lim, pdfPages)
 }
@@ -164,6 +170,8 @@ func debitCallsSQL(feat FeatureKey) (string, error) {
 		return sqlDebitPlanCalls, nil
 	case FeatureCrossSubjectRank:
 		return sqlDebitCrossSubjectRankCalls, nil
+	case FeatureGenerateQuiz:
+		return sqlDebitQuizCalls, nil
 	}
 	return "", fmt.Errorf("unknown feature %q", feat)
 }

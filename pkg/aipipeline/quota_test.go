@@ -112,3 +112,49 @@ func TestCheckAgainstLimits_CrossSubjectRankNeverDebits(t *testing.T) {
 		t.Errorf("cross-subject rank should always pass quota check, got %v", err)
 	}
 }
+
+func TestCheckQuota_QuizCallsAllowsUnderLimit(t *testing.T) {
+	pool := testutil.OpenTestDB(t)
+	testutil.Reset(t, pool)
+	u := testutil.NewVerifiedUser(t, pool)
+
+	svc := aipipeline.NewService(pool, nil, nil, aipipeline.QuotaLimits{QuizCalls: 3}, "test-model")
+	if err := svc.CheckQuota(context.Background(), u.ID, aipipeline.FeatureGenerateQuiz, 0); err != nil {
+		t.Fatalf("expected nil, got %v", err)
+	}
+}
+
+func TestCheckQuota_QuizCallsRejectsAtLimit(t *testing.T) {
+	pool := testutil.OpenTestDB(t)
+	testutil.Reset(t, pool)
+	u := testutil.NewVerifiedUser(t, pool)
+	testutil.SeedQuotaAt(t, pool, u.ID, "quiz_calls", 3)
+
+	svc := aipipeline.NewService(pool, nil, nil, aipipeline.QuotaLimits{QuizCalls: 3}, "test-model")
+	err := svc.CheckQuota(context.Background(), u.ID, aipipeline.FeatureGenerateQuiz, 0)
+	if !errors.Is(err, myErrors.ErrQuotaExhausted) {
+		t.Fatalf("expected ErrQuotaExhausted, got %v", err)
+	}
+}
+
+func TestDebitQuota_QuizCallsIncrementsRow(t *testing.T) {
+	pool := testutil.OpenTestDB(t)
+	testutil.Reset(t, pool)
+	u := testutil.NewVerifiedUser(t, pool)
+
+	svc := aipipeline.NewService(pool, nil, nil, aipipeline.QuotaLimits{QuizCalls: 5}, "test-model")
+	if err := svc.DebitQuota(context.Background(), u.ID, aipipeline.FeatureGenerateQuiz, 1, 0); err != nil {
+		t.Fatalf("debit: %v", err)
+	}
+
+	var n int
+	err := pool.QueryRow(context.Background(),
+		`SELECT quiz_calls FROM ai_quota_daily WHERE user_id = $1 AND day = CURRENT_DATE`, u.ID,
+	).Scan(&n)
+	if err != nil {
+		t.Fatalf("query: %v", err)
+	}
+	if n != 1 {
+		t.Fatalf("quiz_calls = %d, want 1", n)
+	}
+}
