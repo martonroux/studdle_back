@@ -130,8 +130,12 @@ type AnswerResult struct {
 }
 
 // Answer scores the user's submission and advances the attempt.
-// Idempotent on (attempt_id, question_id) — repeated submits return the
-// scored result of the first submission without changing state.
+// Persistence is idempotent on (attempt_id, question_id): repeated submits
+// do not insert a duplicate row and do not change persisted state
+// (the first submission's answer remains the canonical record). The
+// returned AnswerResult reflects the *current* call's score relative to
+// the correct payload; on a re-submit this may differ from the persisted
+// answer row.
 func (s *Service) Answer(ctx context.Context, uid, attemptID, questionID int64, userAns json.RawMessage) (AnswerResult, error) {
 	att, err := s.loadAttempt(ctx, attemptID)
 	if err != nil {
