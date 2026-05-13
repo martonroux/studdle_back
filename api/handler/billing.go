@@ -125,6 +125,7 @@ type planTile struct {
 func (h *BillingHandler) GetPlans(w http.ResponseWriter, r *http.Request) {
 	p, err := h.prices.GetPrices(r.Context())
 	if err != nil {
+		log.Printf("billing.GetPlans: GetPrices failed: %v", err)
 		httpx.WriteError(w, &myErrors.AppError{
 			Code:    "prices_unavailable",
 			Message: "pricing temporarily unavailable",

@@ -24,7 +24,8 @@ func NewStripeClient(secretKey, webhookSecret string) *StripeClient {
 // GetPrice fetches a Stripe Price by ID and maps it to PriceData.
 // Non-recurring prices return an empty Interval.
 func (c *StripeClient) GetPrice(ctx context.Context, priceID string) (PriceData, error) {
-	p, err := price.Get(priceID, nil)
+	params := &stripe.PriceParams{Params: stripe.Params{Context: ctx}}
+	p, err := price.Get(priceID, params)
 	if err != nil {
 		return PriceData{}, fmt.Errorf("stripe get price %s:\n%w", priceID, err)
 	}
