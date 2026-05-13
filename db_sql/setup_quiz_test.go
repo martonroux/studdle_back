@@ -72,17 +72,22 @@ func TestQuizSchema_MatchesSpec(t *testing.T) {
 
 // requireColumn is defined in setup_billing_test.go (same package db_sql_test).
 
+// requireColumnAbsent fails the test if table.col exists in the schema.
 func requireColumnAbsent(t *testing.T, pool *pgxpool.Pool, table, col string) {
 	t.Helper()
 	var exists bool
-	_ = pool.QueryRow(context.Background(),
+	err := pool.QueryRow(context.Background(),
 		`SELECT EXISTS (SELECT 1 FROM information_schema.columns
 		    WHERE table_name = $1 AND column_name = $2)`, table, col).Scan(&exists)
+	if err != nil {
+		t.Fatalf("query column %s.%s: %v", table, col, err)
+	}
 	if exists {
 		t.Fatalf("column %s.%s should not exist", table, col)
 	}
 }
 
+// requireNotNull fails the test if table.col is nullable.
 func requireNotNull(t *testing.T, pool *pgxpool.Pool, table, col string) {
 	t.Helper()
 	var nullable string
@@ -97,6 +102,7 @@ func requireNotNull(t *testing.T, pool *pgxpool.Pool, table, col string) {
 	}
 }
 
+// requireUniqueIndex fails the test if no UNIQUE index covers all of cols on table.
 func requireUniqueIndex(t *testing.T, pool *pgxpool.Pool, table string, cols []string) {
 	t.Helper()
 	var n int
@@ -113,6 +119,7 @@ func requireUniqueIndex(t *testing.T, pool *pgxpool.Pool, table string, cols []s
 	}
 }
 
+// requirePartialUniqueIndex fails the test if no UNIQUE index with the given WHERE clause covers cols on table.
 func requirePartialUniqueIndex(t *testing.T, pool *pgxpool.Pool, table string, cols []string, where string) {
 	t.Helper()
 	var n int
@@ -130,6 +137,7 @@ func requirePartialUniqueIndex(t *testing.T, pool *pgxpool.Pool, table string, c
 	}
 }
 
+// columnsLike returns a SQL predicate fragment that ANDs an ILIKE on indexdef for each column name.
 func columnsLike(cols []string) string {
 	q := ""
 	for i, c := range cols {
@@ -141,6 +149,7 @@ func columnsLike(cols []string) string {
 	return q
 }
 
+// requireCheckAccepts fails the test if the given INSERT (parameterised on $1=subject_id) is rejected by a CHECK constraint.
 func requireCheckAccepts(t *testing.T, pool *pgxpool.Pool, q string) {
 	t.Helper()
 	subjectID := seedSubject(t, pool)
@@ -149,6 +158,7 @@ func requireCheckAccepts(t *testing.T, pool *pgxpool.Pool, q string) {
 	}
 }
 
+// requireCheckRejects fails the test if the given INSERT (parameterised on $1=subject_id) is accepted by a CHECK constraint.
 func requireCheckRejects(t *testing.T, pool *pgxpool.Pool, q string) {
 	t.Helper()
 	subjectID := seedSubject(t, pool)
