@@ -120,3 +120,144 @@ func (s *Service) advance(ctx context.Context, attemptID int64) (*PublicQuestion
 	}
 	return &q, prog, nil
 }
+
+// AnswerResult is the response payload for /answer.
+type AnswerResult struct {
+	Correct       bool            `json:"correct"`
+	CorrectAnswer json.RawMessage `json:"correctAnswer"`
+	Explanation   string          `json:"explanation,omitempty"`
+	Next          *PublicQuestion `json:"nextQuestion,omitempty"`
+}
+
+// Answer scores the user's submission and advances the attempt.
+// Idempotent on (attempt_id, question_id) — repeated submits return the
+// scored result of the first submission without changing state.
+func (s *Service) Answer(ctx context.Context, uid, attemptID, questionID int64, userAns json.RawMessage) (AnswerResult, error) {
+	att, err := s.loadAttempt(ctx, attemptID)
+	if err != nil {
+		return AnswerResult{}, err
+	}
+	if att.UserID != uid {
+		return AnswerResult{}, myErrors.ErrForbidden
+	}
+	if att.State != StateInProgress {
+		return AnswerResult{}, fmt.Errorf("%w: attempt not in_progress", myErrors.ErrConflict)
+	}
+	q, err := s.loadQuestion(ctx, questionID, att.QuizID)
+	if err != nil {
+		return AnswerResult{}, err
+	}
+	correct, err := scoreAnswer(q.Type, q.CorrectJSON, userAns)
+	if err != nil {
+		return AnswerResult{}, err
+	}
+
+	tx, err := s.db.Begin(ctx)
+	if err != nil {
+		return AnswerResult{}, fmt.Errorf("begin tx:\n%w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	tag, err := tx.Exec(ctx, `
+		INSERT INTO quiz_attempt_answers (attempt_id, question_id, user_answer_jsonb, correct)
+		VALUES ($1,$2,$3,$4)
+		ON CONFLICT (attempt_id, question_id) DO NOTHING`,
+		attemptID, questionID, userAns, correct)
+	if err != nil {
+		return AnswerResult{}, fmt.Errorf("insert answer:\n%w", err)
+	}
+	inserted := tag.RowsAffected() > 0
+	if inserted && correct {
+		if _, err := tx.Exec(ctx,
+			`UPDATE quiz_attempts SET correct_count = correct_count + 1 WHERE id=$1`,
+			attemptID); err != nil {
+			return AnswerResult{}, fmt.Errorf("bump correct_count:\n%w", err)
+		}
+	}
+
+	var answered int
+	if err := tx.QueryRow(ctx,
+		`SELECT count(*) FROM quiz_attempt_answers WHERE attempt_id=$1`, attemptID,
+	).Scan(&answered); err != nil {
+		return AnswerResult{}, err
+	}
+	if answered >= att.TotalCount {
+		if err := s.completeAttempt(ctx, tx, attemptID); err != nil {
+			return AnswerResult{}, err
+		}
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return AnswerResult{}, fmt.Errorf("commit:\n%w", err)
+	}
+
+	next, _, err := s.advance(ctx, attemptID)
+	if err != nil {
+		return AnswerResult{}, err
+	}
+	return AnswerResult{
+		Correct:       correct,
+		CorrectAnswer: q.CorrectJSON,
+		Explanation:   q.Explanation,
+		Next:          next,
+	}, nil
+}
+
+// loadAttempt fetches a quiz_attempts row by id; returns ErrNotFound if missing.
+func (s *Service) loadAttempt(ctx context.Context, id int64) (Attempt, error) {
+	var att Attempt
+	err := s.db.QueryRow(ctx, `
+		SELECT id, quiz_id, user_id, state, started_at, completed_at,
+		       correct_count, total_count, score_pct, plan_id, plan_date
+		  FROM quiz_attempts WHERE id=$1`, id,
+	).Scan(&att.ID, &att.QuizID, &att.UserID, &att.State, &att.StartedAt, &att.CompletedAt,
+		&att.CorrectCount, &att.TotalCount, &att.ScorePct, &att.PlanID, &att.PlanDate)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return att, myErrors.ErrNotFound
+	}
+	if err != nil {
+		return att, fmt.Errorf("load attempt:\n%w", err)
+	}
+	return att, nil
+}
+
+// loadQuestion fetches a quiz_questions row scoped to quizID, with the server-only
+// correct_jsonb payload. Returns ErrNotFound if missing or not in that quiz.
+func (s *Service) loadQuestion(ctx context.Context, qid, quizID int64) (Question, error) {
+	var q Question
+	var opts, fcIDs []byte
+	err := s.db.QueryRow(ctx, `
+		SELECT id, quiz_id, ordinal, question_type, stem,
+		       options_jsonb, correct_jsonb, COALESCE(explanation,''), referenced_fc_ids_jsonb
+		  FROM quiz_questions WHERE id=$1 AND quiz_id=$2`,
+		qid, quizID,
+	).Scan(&q.ID, &q.QuizID, &q.Ordinal, &q.Type, &q.Stem, &opts, &q.CorrectJSON, &q.Explanation, &fcIDs)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return q, myErrors.ErrNotFound
+	}
+	if err != nil {
+		return q, fmt.Errorf("load question:\n%w", err)
+	}
+	if opts != nil {
+		q.Options = json.RawMessage(opts)
+	}
+	if len(fcIDs) > 0 {
+		_ = json.Unmarshal(fcIDs, &q.ReferencedFcIDs)
+	}
+	return q, nil
+}
+
+// completeAttempt marks the attempt as completed and computes score_pct.
+// Plan D2 will extend this to write revision_plan_progress.
+func (s *Service) completeAttempt(ctx context.Context, tx pgx.Tx, attemptID int64) error {
+	if _, err := tx.Exec(ctx, `
+		UPDATE quiz_attempts
+		   SET state='completed',
+		       completed_at = now(),
+		       score_pct = CASE WHEN total_count > 0
+		                        THEN (correct_count * 100) / total_count
+		                        ELSE 0 END
+		 WHERE id=$1`, attemptID); err != nil {
+		return fmt.Errorf("complete attempt:\n%w", err)
+	}
+	return nil
+}
