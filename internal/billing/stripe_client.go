@@ -20,6 +20,11 @@ func NewStripeClient(secretKey, webhookSecret string) *StripeClient {
 	return &StripeClient{webhookSecret: webhookSecret}
 }
 
+// GetPrice is a placeholder; real implementation is added in a later task.
+func (c *StripeClient) GetPrice(ctx context.Context, priceID string) (PriceData, error) {
+	return PriceData{}, nil
+}
+
 // CreateCustomer creates a Stripe customer for the given email and user ID.
 // The user ID is stored in the customer's metadata under the "user_id" key.
 func (c *StripeClient) CreateCustomer(ctx context.Context, email string, userID int64) (string, error) {
