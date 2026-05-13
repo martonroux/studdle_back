@@ -1,32 +1,63 @@
 package handler
 
 import (
+	"context"
+	"fmt"
 	"net/http"
+	"strconv"
 
-	"studbud/backend/internal/httpx"
 	"studbud/backend/internal/myErrors"
+	"studbud/backend/pkg/access"
 	"studbud/backend/pkg/quiz"
 )
 
-// QuizHandler stubs Spec D endpoints.
+// QuizHandler exposes the Spec D quiz endpoints.
 type QuizHandler struct {
-	svc *quiz.Service // svc is the (stub) quiz service
+	svc    *quiz.Service   // svc owns all quiz domain operations
+	access *access.Service // access answers the AI-entitlement gate
 }
 
 // NewQuizHandler constructs a QuizHandler.
-func NewQuizHandler(svc *quiz.Service) *QuizHandler { return &QuizHandler{svc: svc} }
-
-// Generate stubs POST /quiz/generate.
-func (h *QuizHandler) Generate(w http.ResponseWriter, r *http.Request) {
-	httpx.WriteError(w, myErrors.ErrNotImplemented)
+func NewQuizHandler(svc *quiz.Service, acc *access.Service) *QuizHandler {
+	return &QuizHandler{svc: svc, access: acc}
 }
 
-// Attempt stubs POST /quiz/attempt?id=...
-func (h *QuizHandler) Attempt(w http.ResponseWriter, r *http.Request) {
-	httpx.WriteError(w, myErrors.ErrNotImplemented)
+// requireAIAccess is the entitlement check shared by generation endpoints.
+// Plan D3 will extend this with the quizDemoUsed demo-path bypass.
+func (h *QuizHandler) requireAIAccess(ctx context.Context, uid int64) error {
+	ok, err := h.access.HasAIAccess(ctx, uid)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return myErrors.ErrNoAIAccess
+	}
+	return nil
 }
 
-// Share stubs POST /quiz/share?id=...
-func (h *QuizHandler) Share(w http.ResponseWriter, r *http.Request) {
-	httpx.WriteError(w, myErrors.ErrNotImplemented)
+// quizIDFromPath parses the {id} path value from the request.
+// Handlers registered with stdlib mux's `/quizzes/{id}/...` shape pull it via r.PathValue.
+func quizIDFromPath(r *http.Request) (int64, error) {
+	raw := r.PathValue("id")
+	if raw == "" {
+		return 0, myErrors.ErrInvalidInput
+	}
+	id, err := strconv.ParseInt(raw, 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("%w: %s", myErrors.ErrInvalidInput, err)
+	}
+	return id, nil
+}
+
+// attemptIDFromPath parses the {aid} path value from the request.
+func attemptIDFromPath(r *http.Request) (int64, error) {
+	raw := r.PathValue("aid")
+	if raw == "" {
+		return 0, myErrors.ErrInvalidInput
+	}
+	id, err := strconv.ParseInt(raw, 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("%w: %s", myErrors.ErrInvalidInput, err)
+	}
+	return id, nil
 }
