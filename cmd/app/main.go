@@ -56,6 +56,16 @@ func run() error {
 			return reapStuckExtractionJobs(ctx, d)
 		},
 	})
+	d.scheduler.Register(cron.Job{
+		Name:     "billingReconcile",
+		Interval: 24 * time.Hour,
+		Run: func(ctx context.Context) error {
+			if _, err := d.billing.ReconcileOnce(ctx); err != nil {
+				log.Printf("billing reconcile: %v", err)
+			}
+			return nil
+		},
+	})
 	d.scheduler.Start(ctx)
 	d.worker.Start(ctx)
 

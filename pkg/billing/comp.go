@@ -1,0 +1,74 @@
+package billing
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"time"
+)
+
+// CompGrant captures the admin form values for POST /admin/comp-subscription.
+type CompGrant struct {
+	UserID      int64      // UserID is the recipient
+	ExpiresAt   *time.Time // ExpiresAt is the comp expiry (nil = indefinite)
+	Reason      string     // Reason is the operator-supplied note
+	ActorUserID int64      // ActorUserID is the admin who granted the comp
+}
+
+// CompRevoke captures the admin form values for DELETE /admin/comp-subscription.
+type CompRevoke struct {
+	UserID      int64  // UserID is the target user
+	Reason      string // Reason is the operator-supplied note
+	ActorUserID int64  // ActorUserID is the admin who revoked
+}
+
+// GrantCompWithExpiry upserts a comp row with an optional expiry and writes
+// an admin_comp_granted audit row. This is the structured Spec C admin path.
+func (s *Service) GrantCompWithExpiry(ctx context.Context, g CompGrant) error {
+	const upsert = `
+        INSERT INTO user_subscriptions (user_id, plan, status, current_period_end, created_at, updated_at)
+        VALUES ($1, 'comp', 'comped', $2, now(), now())
+        ON CONFLICT (user_id) DO UPDATE SET
+            plan = 'comp',
+            status = 'comped',
+            current_period_end = EXCLUDED.current_period_end,
+            updated_at = now()
+    `
+	if _, err := s.db.Exec(ctx, upsert, g.UserID, g.ExpiresAt); err != nil {
+		return fmt.Errorf("upsert comp:\n%w", err)
+	}
+	payload, _ := json.Marshal(map[string]any{
+		"reason":    g.Reason,
+		"actor":     g.ActorUserID,
+		"expiresAt": g.ExpiresAt,
+	})
+	if _, err := s.db.Exec(ctx, sqlInsertEvent,
+		"", g.UserID, "admin_comp_granted", false, payload,
+	); err != nil {
+		return fmt.Errorf("insert audit:\n%w", err)
+	}
+	return nil
+}
+
+// RevokeComp sets the user's row to status='canceled' and writes an
+// admin_comp_revoked audit row.
+func (s *Service) RevokeComp(ctx context.Context, r CompRevoke) error {
+	const upd = `
+        UPDATE user_subscriptions
+        SET status = 'canceled', updated_at = now()
+        WHERE user_id = $1 AND plan = 'comp'
+    `
+	if _, err := s.db.Exec(ctx, upd, r.UserID); err != nil {
+		return fmt.Errorf("revoke comp:\n%w", err)
+	}
+	payload, _ := json.Marshal(map[string]any{
+		"reason": r.Reason,
+		"actor":  r.ActorUserID,
+	})
+	if _, err := s.db.Exec(ctx, sqlInsertEvent,
+		"", r.UserID, "admin_comp_revoked", false, payload,
+	); err != nil {
+		return fmt.Errorf("insert audit:\n%w", err)
+	}
+	return nil
+}

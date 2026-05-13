@@ -210,7 +210,7 @@ func GiveAICompAccess(t *testing.T, pool *pgxpool.Pool, uid int64) {
 	t.Helper()
 	_, err := pool.Exec(context.Background(), `
         INSERT INTO user_subscriptions (user_id, plan, status)
-        VALUES ($1, 'comp', 'comp')
+        VALUES ($1, 'comp', 'comped')
     `, uid)
 	if err != nil {
 		t.Fatalf("give comp access: %v", err)

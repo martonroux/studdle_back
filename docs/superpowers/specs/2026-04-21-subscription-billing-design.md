@@ -2,7 +2,8 @@
 
 **Status:** Design approved, ready for implementation planning.
 **Date:** 2026-04-21
-**Scope:** Replace Spec A's `ai_subscription_active` admin-flip stub with real payment rails on the web (Stripe Checkout + Customer Portal). Single paid tier ("Pro"), monthly and annual billing, 7-day card-required free trial, EUR-only at launch. Web only — mobile IAP (Apple + Google) is a later spec (Spec C.1). Supersedes Spec A's `/admin/set-ai-subscription` endpoint.
+**Revised:** 2026-05-11 — trial extended 7 → 30 days (Q4); dunning switched from immediate pause to Stripe Smart Retries with no grace (Q6); Pro-tier daily quotas now explicit (new Q16); §5.3 / §6.3 updated accordingly; §4.4 expanded to cover scaffold-drift cleanup carried over from Spec A's foundation work.
+**Scope:** Replace Spec A's `ai_subscription_active` admin-flip stub with real payment rails on the web (Stripe Checkout + Customer Portal). Single paid tier ("Pro"), monthly and annual billing, **30-day card-required free trial**, EUR-only at launch. Web only — mobile IAP (Apple + Google) is a later spec (Spec C.1). Supersedes Spec A's `/admin/set-ai-subscription` endpoint.
 
 Not in scope: mobile in-app purchases, multi-currency pricing, purchasing-power-parity adjustments, tiered plans (Pro / Pro+), quota top-ups / credit packs, student discounts, family plans, referral rewards, public refund policy, email campaigns / abandoned-cart recovery.
 
@@ -13,7 +14,7 @@ Not in scope: mobile in-app purchases, multi-currency pricing, purchasing-power-
 StudBud gates AI features behind an entitlement flag (`ai_subscription_active`). Spec A shipped this as an admin-flipped boolean so the AI pipeline could be built in parallel with billing. This spec wires that flag to real Stripe subscriptions so users can self-serve their way to Pro, and introduces the local state, audit trail, and recovery tooling required to operate billing safely in production.
 
 Outcomes:
-- A free user can click "Start 7-day trial," pay via Stripe Checkout, and have AI access within seconds.
+- A free user can click "Start 30-day trial," pay via Stripe Checkout, and have AI access within seconds.
 - Cancellations, payment failures, and admin comps all flow through the same `user_subscriptions` table.
 - Webhook loss, out-of-order delivery, and duplicate events cannot corrupt entitlement state.
 - Spec A's admin endpoint is removed; its functional replacement is a comp-grant endpoint writing to the same table.
@@ -25,9 +26,9 @@ Outcomes:
 | Q1 | Platform scope at launch | Web only (Stripe). Mobile IAP deferred to Spec C.1. | Fastest proven billing pipeline. Pre-launch, App Store paywall friction is acceptable. |
 | Q2 | Tier shape | Single paid tier ("Pro"). | No usage data yet to justify tier splits. Adding Pro+ later is additive, not migratory. |
 | Q3 | Billing cadence | Monthly + Annual (annual ~29% off). Two Stripe price IDs under one product. | Monthly = try-before-commit. Annual = retention + revenue smoothing. Standard SaaS dual offer. |
-| Q4 | Free trial | 7-day trial, card required upfront. One per user. | Card-required trials convert meaningfully better. Stripe owns the lifecycle; no custom expiry logic. |
+| Q4 | Free trial | **30-day trial, card required upfront. One per user.** | Card-required trials convert meaningfully better; 30 days gives enough study sessions to feel Pro's impact. Stripe owns the lifecycle; no custom expiry logic. One-trial-per-Customer enforcement deduplicates abuse. |
 | Q5 | Cancellation behavior | Downgrade at period end. No refund on cancel. | Stripe default; removes refund-abuse vectors; matches user expectations. |
-| Q6 | Payment-failure dunning | Immediate pause of subscription. No retries, no grace. Access revoked until user updates card and Stripe resumes. | Cleanest possible signal. No revenue recovery from retries is traded for total simplicity + zero abuse surface. |
+| Q6 | Payment-failure dunning | **Stripe Smart Retries on, no grace.** Status moves to `past_due` on first failure → access revoked immediately. Successful retry returns status to `active` → access restored. If retries exhaust, Stripe cancels the subscription. | Recovers involuntary churn (forgotten cards) without exposing free access during the retry window. We never call `pause_collection` ourselves — Stripe handles the entire retry schedule. |
 | Q7 | Checkout infrastructure | Stripe Checkout (hosted) + Stripe Customer Portal (hosted). | ~90% less code than Elements. SCA, tax, Apple/Google Pay all handled. Brand equity not yet worth optimizing. |
 | Q8 | Pricing & currency | Single currency (EUR). €6.99/mo, €59.99/yr. Tax-inclusive. | Pre-launch, per-market anchoring is premature. Non-EUR users pay EUR at their card's FX. |
 | Q9 | Entitlement source of truth | Local `user_subscriptions` row mirrors Stripe state. `user_has_ai_access(uid)` SQL helper is the entitlement check. Append-only `billing_events` audit log. | Cheap reads, zero Stripe dependency on every AI call, full self-serve debugging. |
@@ -35,8 +36,9 @@ Outcomes:
 | Q11 | Refunds & chargebacks | No public refund policy. Manual discretionary refunds via Stripe dashboard. Chargebacks <€50 eaten, >€50 fought with usage evidence. | Industry-standard for indie SaaS. Public policies defer until support bandwidth justifies. |
 | Q12 | Webhook reliability | Signature-verify + idempotency by `event.id` (unique constraint) + nightly reconciliation cron + user-facing refresh endpoint, all sharing one Stripe-retrieve path. | Defense in depth without code duplication. Refresh button flips many support tickets into self-service. |
 | Q13 | Paywall placement | Inline paywall (reuses Spec A's `PaywallCard.vue`) + public `/pricing` route. Both call the same `/billing/checkout`. | Inline captures impulse conversions; `/pricing` handles considered ones and doubles as marketing. |
-| Q14 | Admin backdoor | Keep admin endpoint (env-gated), now writes `user_subscriptions` rows with `status='comped'`. `ADMIN_API_ENABLED=true` required. | One source of truth. Comp audit trail identical to paid-customer audit trail. |
+| Q14 | Admin backdoor | Keep admin endpoint, now writes `user_subscriptions` rows with `status='comped'`. Gated by `RequireAdmin` middleware (`users.is_admin=TRUE`), same gate Spec A's `/admin/grant-ai-access` uses. | One source of truth. Comp audit trail identical to paid-customer audit trail. The earlier `ADMIN_API_ENABLED` env flag was retired during Spec A implementation in favor of a persisted admin attribute. |
 | Q15 | Env config & test-mode isolation | `STRIPE_MODE=test\|live` + key-prefix assertion at boot + per-webhook `livemode` field check. | Three independent safeties. The livemode check specifically blocks cross-environment webhook misrouting. |
+| Q16 | Pro-tier quotas (new) | **Pro tier = the daily caps already defined in `aipipeline.DefaultQuotaLimits()`**: `prompt_calls=20`, `pdf_calls=5`, `pdf_pages=100`, `check_calls=50`, `plan_calls=5`. **Free tier = zero AI calls of any kind** (no AI access, period). | Single source of truth for "what does Pro get." The numbers were tuned during Spec A/B implementation; locking them into Spec C means future tier additions inherit a documented baseline rather than discovering it via code archaeology. Free = zero matches the existing entitlement check (`user_has_ai_access` returns false → pipeline returns 402). |
 
 ## 3. Architecture Overview
 
@@ -134,14 +136,27 @@ CREATE INDEX idx_billing_events_user ON billing_events (user_id, received_at DES
 - `stripe_event_id` is NULL for non-Stripe-originated events (admin actions, cron reconciliations). Those use synthetic `event_type` values: `admin_comp_granted`, `admin_comp_revoked`, `cron_reconciled`, `user_refresh_triggered`.
 - `livemode` recorded from the Stripe event (or set to the configured mode for admin/cron events).
 
-### 4.4 Migration from Spec A
+### 4.4 Migration from current scaffold
 
-1. Create `user_subscriptions`, `billing_events`, `user_has_ai_access()`.
-2. Backfill: `INSERT INTO user_subscriptions (user_id, status, plan, current_period_end) SELECT id, 'comped', 'comp', NULL FROM users WHERE ai_subscription_active = TRUE;`
-3. Replace `users.ai_subscription_active` reads in the AI pipeline with `user_has_ai_access(user_id)`.
-4. Drop `users.ai_subscription_active` column.
+Spec A's implementation already landed a minimal scaffold (`user_subscriptions`, `billing_events`, `user_has_ai_access()`) so the AI pipeline could read entitlement from day one. The scaffold diverges from this spec in a few specific ways that the Spec C implementation plan must fix in a single migration step before any Stripe wiring.
 
-All comped-at-migration users keep indefinite access (`current_period_end=NULL`), preserving existing dev/QA beta access.
+**Scaffold deltas to reconcile:**
+
+| Object | Current scaffold | Spec target | Migration action |
+|---|---|---|---|
+| `user_subscriptions` PK | `id BIGSERIAL PRIMARY KEY`, `user_id` FK (non-unique) | `user_id BIGINT PRIMARY KEY` (one row per user) | Collapse to one row per user (keep most recent), drop `id`, set PK to `user_id`. |
+| `user_subscriptions.stripe_customer_id` | absent | required (UNIQUE) | Add column. |
+| `user_subscriptions.stripe_sub_id` | named `stripe_subscription_id` | named `stripe_sub_id` (UNIQUE) | Rename. |
+| `user_subscriptions.trial_end` | absent | required | Add column. |
+| `user_subscriptions.paused_at` | absent | required | Add column. |
+| `user_subscriptions.status` CHECK | `('active','past_due','canceled','trialing','comp')` | spec set with `comped` (not `comp`) plus `paused`, `incomplete`, `incomplete_expired` | Drop + recreate CHECK; rewrite any existing `'comp'` rows to `'comped'`. |
+| `user_subscriptions.plan` CHECK | `('pro_monthly','pro_annual','comp')` | unchanged | Keep. |
+| `billing_events.livemode` | absent | required NOT NULL | Add column (default `(STRIPE_MODE='live')` for existing rows). |
+| `billing_events.stripe_event_id` | `NOT NULL UNIQUE` | `NULL` allowed UNIQUE (admin/cron entries omit it) | Drop NOT NULL. |
+
+There is no `ai_subscription_active` column to drop — the original migration step from this spec's first draft was already executed during Spec A. The pipeline already reads via `user_has_ai_access(uid)`. Existing scaffold rows (if any in dev) survive the reconciliation as long as `status='comp'` is rewritten to `status='comped'`.
+
+The `user_has_ai_access()` function itself is correct as-is; no changes required.
 
 ## 5. Backend Endpoints
 
@@ -196,10 +211,10 @@ Dispatched events:
 | `customer.subscription.created` | Retrieve sub (may be same as above; idempotent). `applyStripeState`. |
 | `customer.subscription.updated` | Retrieve sub. `applyStripeState` — picks up status transitions, cancellation flag, period rollover, plan swap. |
 | `customer.subscription.deleted` | Set local `status='canceled'`. |
-| `customer.subscription.paused` | Set `status='paused'`, `paused_at=NOW()`. |
+| `customer.subscription.paused` | Set `status='paused'`, `paused_at=NOW()`. Reserved for explicit Stripe pause (e.g. operator action). Smart Retries does **not** pause — it moves the subscription to `past_due`. |
 | `customer.subscription.resumed` | Set `status='active'`, `paused_at=NULL`. |
-| `invoice.payment_failed` | Call `stripe.subscriptions.update(id, { pause_collection: { behavior: 'keep_as_draft' } })`. Stripe fires `subscription.paused` which mutates local state. |
-| `invoice.payment_succeeded` | Log only. (Subscription.updated fires separately with new `current_period_end`.) |
+| `invoice.payment_failed` | **Log only.** Stripe Smart Retries owns the retry schedule. The companion `customer.subscription.updated` event will carry `status='past_due'` and is what mutates local state. We never call `pause_collection` ourselves. |
+| `invoice.payment_succeeded` | Log only. (Subscription.updated fires separately with refreshed `status='active'` and new `current_period_end`.) |
 | `charge.refunded` | Log only. No entitlement change. |
 | any other | Log only (already written by preamble). |
 
@@ -237,56 +252,66 @@ Calls `stripe.subscriptions.list({ customer: user.stripe_customer_id, status: 'a
 
 Config-driven; lets us tune display prices without frontend redeploys.
 
-### 5.7 Admin endpoints (env-gated)
+### 5.7 Admin endpoints
 
 - `POST /admin/comp-subscription` — body `{ userId, expiresAt: ISO-date|null, reason: string }`. Upserts row with `status='comped'`, `plan='comp'`, `current_period_end=expiresAt`, `stripe_customer_id=null`. Logs `admin_comp_granted` with `{reason, actor, expiresAt}` in payload.
 - `DELETE /admin/comp-subscription` — body `{ userId, reason: string }`. Sets `status='canceled'`. Logs `admin_comp_revoked`.
 
-Both require `ADMIN_API_ENABLED=true` at boot **and** an admin auth token (reuses Spec A's admin gate).
+Both endpoints sit behind the same `RequireAdmin` middleware as Spec A's `POST /admin/grant-ai-access` — i.e. the authenticated user must have `users.is_admin = TRUE`. No separate env flag.
 
-Spec A's `POST /admin/set-ai-subscription` is removed in this spec's migration.
+Spec A's `POST /admin/grant-ai-access` continues to exist as the dev/QA path to flip entitlement without dropping into the subscription model; this spec adds `comp-subscription` for cases where you want a structured, expiring comp recorded as a `user_subscriptions` row. Both paths funnel writes through `billingService` so the audit trail is uniform.
 
 ## 6. Control Flow (Lifecycle Scenarios)
 
 ### 6.1 New trial signup (happy path)
 
 ```
-User clicks "Start 7-day trial" in PaywallCard
+User clicks "Start 30-day trial" in PaywallCard
   → POST /billing/checkout {plan: "pro_monthly"}
   → Backend: get-or-create stripe_customer_id
-  → Backend: create Checkout Session (trial_period_days=7, automatic_tax=on)
+  → Backend: create Checkout Session (trial_period_days=30, automatic_tax=on)
   → return {url}
 User → Stripe Checkout (card form) → submits → returns to /billing?status=success
 Stripe → POST /billing/webhook [checkout.session.completed]
   → Backend: verify sig + livemode → insert billing_events
   → retrieve sub → applyStripeState(user, sub):
-       status='trialing', plan='pro_monthly', trial_end=now+7d, current_period_end=now+7d
-/billing fetches subscription → isActive=true → UI shows "Trial active, 7 days remaining"
+       status='trialing', plan='pro_monthly', trial_end=now+30d, current_period_end=now+30d
+/billing fetches subscription → isActive=true → UI shows "Trial active, 30 days remaining"
 AI pipeline: user_has_ai_access(userId) → true → unlocks
 ```
 
 ### 6.2 Trial → paid conversion (automatic)
 
 ```
-Day 7: Stripe charges
+Day 30: Stripe charges
   → webhook invoice.payment_succeeded (logged)
   → webhook customer.subscription.updated (status='active', current_period_end=now+30d)
   → applyStripeState upserts
 User sees no difference except /billing now reads "Renews <date>"
 ```
 
-### 6.3 Trial → paid conversion fails (card declined)
+### 6.3 Trial → paid conversion fails (card declined) — Smart Retries flow
 
 ```
-Day 7: charge fails
-  → webhook invoice.payment_failed
-  → Backend: stripe.subscriptions.update(subId, {pause_collection: {behavior: "keep_as_draft"}})
-  → Stripe → webhook customer.subscription.paused → status='paused', paused_at=NOW()
-  → user_has_ai_access → false
+Day 30: charge fails
+  → webhook invoice.payment_failed (logged only)
+  → webhook customer.subscription.updated (status='past_due')
+  → applyStripeState → local status='past_due'
+  → user_has_ai_access → false (past_due is not a granting status)
 /billing shows red "Payment failed — update your card" banner with portal CTA
-User → portal → updates card → resumes → webhook customer.subscription.resumed → status='active'
-AI access restored next pipeline call
+Stripe Smart Retries: re-attempts charge on its own schedule (typically 3 retries over ~2 weeks).
+  Scenario A — user updates card via portal before retry:
+    → webhook customer.subscription.updated (status='active') → access restored
+  Scenario B — retry succeeds on its own:
+    → webhook invoice.payment_succeeded (logged)
+    → webhook customer.subscription.updated (status='active', current_period_end advanced)
+    → access restored
+  Scenario C — all retries exhaust:
+    → webhook customer.subscription.deleted → status='canceled'
+    → user_has_ai_access stays false; PaywallCard returns
 ```
+
+The backend never calls `subscriptions.update` for failed payments. Stripe Smart Retries owns the entire recovery lifecycle; we just mirror the resulting state.
 
 ### 6.4 Mid-period cancellation
 
@@ -360,19 +385,20 @@ Default refund (issued without cancellation) does **not** revoke access — the 
 
 ### 8.1 Routes
 
-- `/pricing` — public. Feature list, plan toggle (monthly / annual), per-plan price tile, "Start 7-day trial" CTA. Reachable from landing page, profile, QuotaBadge when free, AiCheckModal/AiGenerationControls paywall links.
+- `/pricing` — public. Feature list, plan toggle (monthly / annual), per-plan price tile, "Start 30-day trial" CTA. Reachable from landing page, profile, QuotaBadge when free, AiCheckModal/AiGenerationControls paywall links.
 - `/billing` — authed. Current plan status, renewal / trial-end date, "Manage subscription" portal link, "Refresh status" button, conditional banners.
 
 ### 8.2 Paywall entry points
 
-1. **Inline** — existing `components/ai/PaywallCard.vue`. Now contains a two-tile toggle (monthly / annual) + CTA "Start 7-day trial." CTA → `POST /billing/checkout` → `window.location.href = url`.
+1. **Inline** — existing `components/ai/PaywallCard.vue`. Now contains a two-tile toggle (monthly / annual) + CTA "Start 30-day trial." CTA → `POST /billing/checkout` → `window.location.href = url`.
 2. **Pricing page** — long-form feature-by-feature layout with FAQ. Same checkout call.
 3. **Landing page** — unauthenticated `/` renders existing hero + new "See pricing" link to `/pricing`.
 
 ### 8.3 `/billing` banners
 
 Priority (top-to-bottom, one at most shown):
-- Paused (payment failed): red. Copy: "Payment failed. Update your card to restore AI access." CTA: Manage subscription.
+- Past-due (payment failed, retrying): red. Copy: "Payment failed. Stripe is retrying — update your card to restore AI access sooner." CTA: Manage subscription. Triggered by `status='past_due'`.
+- Paused (operator-initiated): red. Copy: "Subscription paused. Contact support to resume." CTA: Manage subscription. Triggered by `status='paused'`. Rare in v1 — Smart Retries flows through `past_due`, not `paused`.
 - Cancel at period end: orange. Copy: "Your Pro access ends on <date>. Resubscribe anytime." CTA: Manage subscription.
 - Comped: neutral. Copy: "Complimentary access" + "expires <date>" or "no expiry."
 - Trialing: blue. Copy: "Free trial — <N> days remaining. Converts to <plan> on <date>." CTA: Manage subscription.
@@ -426,7 +452,7 @@ Required env at boot:
 - `STRIPE_WEBHOOK_SECRET` — separate secret per mode.
 - `STRIPE_PRICE_PRO_MONTHLY`, `STRIPE_PRICE_PRO_ANNUAL` — must start with `price_`.
 - `APP_URL` — used for `success_url` / `cancel_url` / portal `return_url`.
-- `ADMIN_API_ENABLED` — same flag Spec A uses; gates `/admin/comp-subscription`.
+- Admin endpoints (`/admin/comp-subscription` POST/DELETE) reuse Spec A's admin gating: the `RequireAdmin` HTTP middleware checks `users.is_admin = TRUE` for the authenticated user. No env flag — admin status is a persisted user attribute. (Spec A's earlier `ADMIN_API_ENABLED` env flag was retired during implementation.)
 
 Every webhook event checks `event.livemode === (STRIPE_MODE === 'live')`. Mismatch → 400 + structured alert log.
 
@@ -435,21 +461,24 @@ Reconciliation cron checks `STRIPE_MODE` before calling Stripe — never runs in
 ## 10. Testing
 
 ### Unit (backend)
-- `applyStripeState`: all status transitions (active → paused, paused → active, active → cancel_at_period_end=true, cancel_at_period_end → canceled, trialing → active).
+- `applyStripeState`: all status transitions: `trialing → active`, `active → past_due` (Smart Retries first failure), `past_due → active` (retry success or card updated), `past_due → canceled` (retries exhausted), `active → cancel_at_period_end=true`, `cancel_at_period_end → canceled`, `active → paused` (operator-initiated), `paused → active`.
 - Plan resolution: price ID → plan name; unknown price ID → `failed_to_map` logged, upsert skipped.
 - Webhook idempotency: same `event.id` twice → one row in `billing_events`, one state change.
 - Livemode mismatch: signature-valid event with wrong `livemode` → 400, no state change.
 - Key-prefix assertion: boot with `STRIPE_MODE=live` and `sk_test_xxx` → boot fails with specific error.
-- `user_has_ai_access`: returns true for `trialing/active/comped` within period, false for `paused/past_due/canceled`, false for expired comp.
+- `user_has_ai_access`: returns true for `trialing/active/comped` within period, false for `paused/past_due/canceled/incomplete/incomplete_expired`, false for expired comp.
+- Dunning: `invoice.payment_failed` handler is log-only (no `subscriptions.update` call is made).
 
 ### Integration (backend with DB + Stripe test mode)
 - Full checkout → webhook → subscription row created flow (signed webhook delivered to test endpoint).
-- Payment failure path: simulate `invoice.payment_failed` → verify `stripe.subscriptions.update` called with `pause_collection` → verify local status goes `paused` after `subscription.paused` event.
+- Payment failure path: simulate `invoice.payment_failed` + companion `customer.subscription.updated{status=past_due}` → verify local status goes `past_due`, `user_has_ai_access=false`, no `subscriptions.update` API call made.
+- Smart Retries recovery path: simulate retry success → `customer.subscription.updated{status=active}` → verify status returns to `active`, `user_has_ai_access=true`.
+- Smart Retries exhaustion path: simulate retry final failure → `customer.subscription.deleted` → verify status goes `canceled`.
 - Cancellation path: cancel via Stripe API → webhook chain → status transitions correctly.
 - Reconciliation cron: manually desync local state → run cron → state corrected.
 - Refresh endpoint: manually desync → call `/billing/refresh` → state corrected.
 - Admin comp: POST → row with `status='comped'`, `stripe_customer_id=null`, `user_has_ai_access=true`. DELETE → `status='canceled'`, `user_has_ai_access=false`.
-- Migration: schema with Spec A's flag + one user flagged `true` → run migration → one `comped` row exists, `ai_subscription_active` column gone, pipeline still reads entitlement correctly.
+- Scaffold reconciliation migration (§4.4): pre-migration DB with `id BIGSERIAL` PK, two rows for one user, one row with `status='comp'` → run migration → one row per user, PK is `user_id`, status rewritten to `'comped'`, `livemode` populated, pipeline still reads entitlement correctly.
 
 ### Frontend (component)
 - `PaywallCard.vue`: renders plan toggle; clicking CTA calls `stores/billing.checkout(plan)`.
@@ -458,9 +487,10 @@ Reconciliation cron checks `STRIPE_MODE` before calling Stripe — never runs in
 - Post-checkout return: `/billing?status=success` triggers `refresh()` once.
 
 ### Manual QA (end-to-end, Stripe test mode)
-- New signup → 7-day trial → wait (simulate via Stripe CLI `trigger`) → auto-conversion → verify Pro active.
+- New signup → 30-day trial → fast-forward via Stripe CLI `trigger` → auto-conversion → verify Pro active.
 - New signup → trial → cancel mid-trial → verify keeps access until trial end → period end → verify access revoked.
-- Subscribe → trigger `invoice.payment_failed` → verify paused UI → update card via portal → verify resumed UI.
+- Subscribe → trigger `invoice.payment_failed` → verify `past_due` banner ("Payment failed — update your card") → verify AI access blocked → update card via portal → verify access restored.
+- Subscribe → trigger 4× `invoice.payment_failed` (Smart Retries exhaustion) → verify subscription canceled and PaywallCard returns.
 - Admin comp → user gains Pro without payment.
 - Cross-mode guard: deploy test webhook to live endpoint → live endpoint rejects with livemode mismatch.
 
@@ -477,7 +507,7 @@ Reconciliation cron checks `STRIPE_MODE` before calling Stripe — never runs in
 - **Structured logs:** every state transition logs `{user_id, stripe_sub_id, from_status, to_status, from_plan, to_plan, source}` where `source ∈ webhook|cron|refresh|admin|migration`.
 - **SQL probes (runbook):**
   - Current paying users: `SELECT COUNT(*) FROM user_subscriptions WHERE status IN ('active','trialing')`.
-  - Revenue at risk: `SELECT COUNT(*) FROM user_subscriptions WHERE status = 'paused'`.
+  - Revenue at risk (dunning in flight): `SELECT COUNT(*) FROM user_subscriptions WHERE status = 'past_due'`.
   - Recent drifts: `SELECT * FROM billing_events WHERE event_type='cron_reconciled' ORDER BY received_at DESC LIMIT 50`.
 
 ## 12. Out of Scope (Deferred)

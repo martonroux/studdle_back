@@ -132,7 +132,7 @@ func buildInfra(cfg *config.Config, pool *pgxpool.Pool) (infra, error) {
 		scheduler: cron.New(),
 		worker:    nil, // wired by wireKeywordWorker after the aipipeline service exists
 		aiClient:  selectAIClient(cfg),
-		billing:   billingadapter.NoopClient{},
+		billing:   selectBillingClient(cfg),
 		hub:       duelHub.New(),
 	}, nil
 }
@@ -224,7 +224,10 @@ func buildStubServices(cfg *config.Config, pool *pgxpool.Pool, inf infra, dom do
 		quiz:    quiz.NewService(pool),
 		plan:    pkgplan.NewService(pool, ai, dom.exam, dom.image, dom.access, cfg.AIModel),
 		duel:    duel.NewService(pool, inf.hub),
-		billing: pkgbilling.NewService(pool, inf.billing),
+		billing: pkgbilling.NewService(pool, inf.billing, pkgbilling.PriceMap{
+			Monthly: cfg.StripePriceProMonth,
+			Annual:  cfg.StripePriceProAnnual,
+		}),
 	}
 }
 
@@ -265,6 +268,15 @@ func selectAIClient(cfg *config.Config) aiProvider.Client {
 		return aiProvider.NoopClient{}
 	}
 	return aiProvider.NewClaudeProvider("https://api.anthropic.com", cfg.AnthropicAPIKey)
+}
+
+// selectBillingClient returns the real StripeClient when a secret key is
+// configured and the environment is not "test"; otherwise the NoopClient.
+func selectBillingClient(cfg *config.Config) billingadapter.Client {
+	if cfg.Env == "test" || cfg.StripeSecretKey == "" {
+		return billingadapter.NoopClient{}
+	}
+	return billingadapter.NewStripeClient(cfg.StripeSecretKey, cfg.StripeWebhookSecret)
 }
 
 // TestingT is the minimal testing.T surface this helper uses.

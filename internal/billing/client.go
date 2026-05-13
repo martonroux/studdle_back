@@ -2,6 +2,7 @@ package billing
 
 import (
 	"context"
+	"time"
 
 	"studbud/backend/internal/myErrors"
 )
@@ -12,24 +13,76 @@ type CheckoutSession struct {
 	ID  string
 }
 
-// Client is the billing-provider interface. Real Stripe impl arrives with Spec C.
+// Subscription is the provider-agnostic snapshot returned by RetrieveSubscription.
+type Subscription struct {
+	ID                string     // ID is the Stripe Subscription id
+	CustomerID        string     // CustomerID is the Stripe Customer id
+	Status            string     // Status mirrors Stripe's subscription.status (raw string)
+	PriceID           string     // PriceID is the active price's id (first item)
+	CurrentPeriodEnd  *time.Time // CurrentPeriodEnd is the current period boundary
+	TrialEnd          *time.Time // TrialEnd is the trial boundary (nil after conversion)
+	CancelAtPeriodEnd bool       // CancelAtPeriodEnd is Stripe's cancel_at_period_end
+	PausedAt          *time.Time // PausedAt is set when Stripe paused the subscription
+	Livemode          bool       // Livemode is the Stripe livemode flag
+}
+
+// CheckoutInput packs the args CreateCheckout needs.
+type CheckoutInput struct {
+	UserID     int64
+	CustomerID string
+	PriceID    string
+	TrialDays  int
+	SuccessURL string
+	CancelURL  string
+}
+
+// WebhookEvent is the provider-agnostic webhook payload.
+type WebhookEvent struct {
+	ID       string
+	Type     string
+	Livemode bool
+	Raw      []byte
+}
+
+// Client is the billing-provider interface.
 type Client interface {
-	CreateCheckout(ctx context.Context, uid int64, priceID string) (*CheckoutSession, error)
+	CreateCustomer(ctx context.Context, email string, userID int64) (string, error)
+	CreateCheckout(ctx context.Context, in CheckoutInput) (*CheckoutSession, error)
 	CreatePortal(ctx context.Context, stripeCustomerID, returnURL string) (string, error)
-	VerifyWebhook(payload []byte, signature string) error
+	RetrieveSubscription(ctx context.Context, subID string) (*Subscription, error)
+	ListSubscriptionsByCustomer(ctx context.Context, customerID string, limit int) ([]Subscription, error)
+	ConstructWebhookEvent(payload []byte, signature string) (*WebhookEvent, error)
 }
 
 // NoopClient returns ErrNotImplemented for every call.
 type NoopClient struct{}
 
-func (NoopClient) CreateCheckout(ctx context.Context, uid int64, priceID string) (*CheckoutSession, error) {
+// CreateCustomer returns ErrNotImplemented.
+func (NoopClient) CreateCustomer(ctx context.Context, email string, userID int64) (string, error) {
+	return "", myErrors.ErrNotImplemented
+}
+
+// CreateCheckout returns ErrNotImplemented.
+func (NoopClient) CreateCheckout(ctx context.Context, in CheckoutInput) (*CheckoutSession, error) {
 	return nil, myErrors.ErrNotImplemented
 }
 
+// CreatePortal returns ErrNotImplemented.
 func (NoopClient) CreatePortal(ctx context.Context, stripeCustomerID, returnURL string) (string, error) {
 	return "", myErrors.ErrNotImplemented
 }
 
-func (NoopClient) VerifyWebhook(payload []byte, signature string) error {
-	return myErrors.ErrNotImplemented
+// RetrieveSubscription returns ErrNotImplemented.
+func (NoopClient) RetrieveSubscription(ctx context.Context, subID string) (*Subscription, error) {
+	return nil, myErrors.ErrNotImplemented
+}
+
+// ListSubscriptionsByCustomer returns ErrNotImplemented.
+func (NoopClient) ListSubscriptionsByCustomer(ctx context.Context, customerID string, limit int) ([]Subscription, error) {
+	return nil, myErrors.ErrNotImplemented
+}
+
+// ConstructWebhookEvent returns ErrNotImplemented.
+func (NoopClient) ConstructWebhookEvent(payload []byte, signature string) (*WebhookEvent, error) {
+	return nil, myErrors.ErrNotImplemented
 }

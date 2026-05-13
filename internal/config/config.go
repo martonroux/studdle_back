@@ -15,6 +15,7 @@ type Config struct {
 	FrontendURL  string   // FrontendURL is the primary Vue client origin (used for email links)
 	CORSOrigins  []string // CORSOrigins is the full allowlist echoed back for Access-Control-Allow-Origin
 	BackendURL   string   // BackendURL is this server's public URL
+	AppURL       string   // AppURL is the user-facing app origin for Stripe redirects (defaults to FrontendURL)
 	DatabaseURL string        // DatabaseURL is the full pgx connection string
 	JWTSecret   string        // JWTSecret signs auth tokens (>=32 bytes)
 	JWTIssuer   string        // JWTIssuer is the "iss" claim value
@@ -53,6 +54,9 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("parse JWT_TTL:\n%w", err)
 	}
 	cfg.JWTTTL = ttl
+	if cfg.AppURL == "" {
+		cfg.AppURL = cfg.FrontendURL
+	}
 	if err := validate(cfg); err != nil {
 		return nil, err
 	}
@@ -67,6 +71,7 @@ func loadFromEnv() *Config {
 		FrontendURL: firstCSV(os.Getenv("FRONTEND_URL")),
 		CORSOrigins: splitCSV(os.Getenv("FRONTEND_URL")),
 		BackendURL:  os.Getenv("BACKEND_URL"),
+		AppURL:      getEnvDefault("APP_URL", ""),
 		DatabaseURL: os.Getenv("DATABASE_URL"),
 		JWTSecret:   os.Getenv("JWT_SECRET"),
 		JWTIssuer:   getEnvDefault("JWT_ISSUER", "studbud"),
@@ -184,13 +189,24 @@ func validateSMTP(c *Config) error {
 	return nil
 }
 
-// validateStripeMode rejects live mode outside prod and unknown mode values.
+// validateStripeMode rejects unknown modes, live-mode outside prod, and
+// secret keys whose prefix does not match the configured mode.
 func validateStripeMode(c *Config) error {
+	if c.StripeMode != "test" && c.StripeMode != "live" {
+		return fmt.Errorf("STRIPE_MODE must be 'test' or 'live' (got %q)", c.StripeMode)
+	}
 	if c.StripeMode == "live" && c.Env != "prod" {
 		return fmt.Errorf("STRIPE_MODE=live is not allowed when ENV=%q", c.Env)
 	}
-	if c.StripeMode != "test" && c.StripeMode != "live" {
-		return fmt.Errorf("STRIPE_MODE must be 'test' or 'live' (got %q)", c.StripeMode)
+	if c.StripeSecretKey == "" {
+		return nil
+	}
+	wantPrefix := "sk_test_"
+	if c.StripeMode == "live" {
+		wantPrefix = "sk_live_"
+	}
+	if !strings.HasPrefix(c.StripeSecretKey, wantPrefix) {
+		return fmt.Errorf("STRIPE_SECRET_KEY prefix does not match STRIPE_MODE=%s (want %s*)", c.StripeMode, wantPrefix)
 	}
 	return nil
 }

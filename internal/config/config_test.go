@@ -2,6 +2,7 @@ package config
 
 import (
 	"os"
+	"strings"
 	"testing"
 	"time"
 )
@@ -59,6 +60,41 @@ func TestLoadRejectsLiveStripeOutsideProd(t *testing.T) {
 	_, err := Load()
 	if err == nil {
 		t.Fatal("expected error for live stripe mode in non-prod env")
+	}
+}
+
+// TestValidateStripeMode_KeyPrefixMustMatch covers the four prefix/mode combos.
+func TestValidateStripeMode_KeyPrefixMustMatch(t *testing.T) {
+	cases := []struct {
+		name    string
+		mode    string
+		key     string
+		env     string
+		wantErr string
+	}{
+		{"test mode + sk_test passes", "test", "sk_test_abc", "dev", ""},
+		{"test mode + sk_live fails", "test", "sk_live_abc", "dev", "STRIPE_SECRET_KEY prefix"},
+		{"live mode + sk_live passes", "live", "sk_live_abc", "prod", ""},
+		{"live mode + sk_test fails", "live", "sk_test_abc", "prod", "STRIPE_SECRET_KEY prefix"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			c := &Config{
+				StripeMode:      tc.mode,
+				StripeSecretKey: tc.key,
+				Env:             tc.env,
+			}
+			err := validateStripeMode(c)
+			if tc.wantErr == "" {
+				if err != nil {
+					t.Fatalf("expected no error, got %v", err)
+				}
+				return
+			}
+			if err == nil || !strings.Contains(err.Error(), tc.wantErr) {
+				t.Fatalf("err = %v, want substring %q", err, tc.wantErr)
+			}
+		})
 	}
 }
 

@@ -4,7 +4,7 @@ info:
   description: |
     HTTP API for the StudBud study-aid backend.
 
-    **Scope:** only implemented routes are documented. Stub routes (quiz, plan, duel, billing checkout/portal/webhook) are omitted until their specs ship.
+    **Scope:** only implemented routes are documented. Stub routes (quiz, plan, duel) are omitted until their specs ship.
 
     **Auth:** most routes require a JWT bearer token. Use `POST /user-register` or `POST /user-login` to obtain one, then click **Authorize** in Swagger UI and paste the token (without the `Bearer ` prefix).
 
@@ -27,6 +27,7 @@ tags:
   - name: Gamification
   - name: AI
   - name: Admin
+  - name: Billing
   - name: Exams
   - name: RevisionPlan
 
@@ -1109,24 +1110,19 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/CommitOutput' }
 
-  /admin/grant-ai-access:
+  /admin/comp-subscription:
     post:
       tags: [Admin]
-      summary: Grant or revoke comp AI access for a user
-      description: Admin-only. Writes a `user_subscriptions` row with `plan='comp'`.
+      summary: Grant a complimentary subscription
+      description: Admin-only. Creates a `user_subscriptions` row with `plan='comp'`. Optional expiry via `expires_at`.
       requestBody:
         required: true
         content:
           application/json:
-            schema:
-              type: object
-              required: [user_id, active]
-              properties:
-                user_id: { type: integer, format: int64 }
-                active: { type: boolean }
+            schema: { $ref: '#/components/schemas/CompGrantInput' }
       responses:
         '200':
-          description: Echo + post-mutation state
+          description: Echo + post-mutation AI-access state
           content:
             application/json:
               schema:
@@ -1134,11 +1130,29 @@ paths:
                 properties:
                   userId: { type: integer, format: int64 }
                   aiAccess: { type: boolean }
-        '403':
-          description: Not admin
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/BadRequest' }
+    delete:
+      tags: [Admin]
+      summary: Revoke a complimentary subscription
+      description: Admin-only. Removes the `user_subscriptions` comp row.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CompRevokeInput' }
+      responses:
+        '200':
+          description: Echo + post-mutation AI-access state
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+              schema:
+                type: object
+                properties:
+                  userId: { type: integer, format: int64 }
+                  aiAccess: { type: boolean }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/BadRequest' }
 
   /exams:
     post:
@@ -1291,6 +1305,155 @@ paths:
         '400': { $ref: '#/components/responses/BadRequest' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+
+  # ── Billing (Spec C) ───────────────────────────────────────────────────────
+
+  /billing/plans:
+    get:
+      tags: [Billing]
+      summary: List available plans
+      description: Public endpoint. Returns pricing tiles for all purchasable plans.
+      security: []
+      responses:
+        '200':
+          description: Plan tiles
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/PlanTile' }
+
+  /billing/subscription:
+    get:
+      tags: [Billing]
+      summary: Get current subscription state
+      description: Returns the caller's live subscription snapshot from Stripe (or local DB if Stripe is unreachable).
+      responses:
+        '200':
+          description: Subscription state
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Subscription' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /billing/checkout:
+    post:
+      tags: [Billing]
+      summary: Create a Stripe Checkout session
+      description: |
+        Returns a one-time `url` to redirect the user to. After payment, Stripe redirects back to `APP_URL/billing/success`.
+
+        Error codes:
+        - `already_subscribed` (409) — user already has an active or trialing subscription.
+        - `unknown_plan` (422) — `plan` value is not recognised.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [plan]
+              properties:
+                plan:
+                  type: string
+                  enum: [pro_monthly, pro_annual]
+      responses:
+        '200':
+          description: Checkout redirect URL
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  url: { type: string, format: uri }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/BadRequest' }
+
+  /billing/portal:
+    post:
+      tags: [Billing]
+      summary: Create a Stripe Customer Portal session
+      description: |
+        Returns a one-time `url` for the Stripe billing portal where the user can manage or cancel their subscription.
+
+        Error codes:
+        - `no_customer` (404) — user has never started a checkout; no Stripe customer exists yet.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Portal redirect URL
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  url: { type: string, format: uri }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /billing/webhook:
+    post:
+      tags: [Billing]
+      summary: Stripe webhook receiver
+      description: |
+        Receives signed Stripe events. The `Stripe-Signature` header is required and verified against `STRIPE_WEBHOOK_SECRET`.
+
+        This endpoint is **not** protected by JWT — Stripe calls it directly.
+
+        Returns 400 if signature verification fails or the event is from the wrong livemode.
+      security: []
+      parameters:
+        - in: header
+          name: Stripe-Signature
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: Raw Stripe event JSON (do not modify before forwarding)
+      responses:
+        '200':
+          description: Event acknowledged
+        '400': { $ref: '#/components/responses/BadRequest' }
+
+  /billing/refresh:
+    post:
+      tags: [Billing]
+      summary: Force-refresh subscription from Stripe
+      description: |
+        Pulls the latest subscription state from Stripe, writes it to the local DB, and returns the refreshed snapshot.
+        Rate-limited to prevent abuse (returns 429 if called too frequently within the same window).
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Refreshed subscription state
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Subscription' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
 
 components:
   securitySchemes:
@@ -1741,3 +1904,59 @@ components:
         plan:  { $ref: '#/components/schemas/Plan' }
         today: { $ref: '#/components/schemas/TodayBucket' }
         drift: { $ref: '#/components/schemas/Drift' }
+
+    # ── Billing schemas (Spec C) ─────────────────────────────────────────────
+
+    Subscription:
+      type: object
+      required: [status, cancelAtPeriodEnd, isActive]
+      properties:
+        status:
+          type: string
+          enum: [none, trialing, active, past_due, paused, canceled, comped]
+        plan:
+          type: string
+          enum: [pro_monthly, pro_annual, comp]
+          nullable: true
+        currentPeriodEnd:
+          type: string
+          format: date-time
+          nullable: true
+        trialEnd:
+          type: string
+          format: date-time
+          nullable: true
+        cancelAtPeriodEnd: { type: boolean }
+        isActive: { type: boolean }
+
+    PlanTile:
+      type: object
+      required: [plan, priceEur, interval]
+      properties:
+        plan:
+          type: string
+          enum: [pro_monthly, pro_annual]
+        priceEur: { type: number, format: float }
+        interval:
+          type: string
+          enum: [month, year]
+        discountPct: { type: integer }
+
+    CompGrantInput:
+      type: object
+      required: [user_id, reason]
+      properties:
+        user_id: { type: integer, format: int64 }
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: "Optional RFC-3339 expiry. Omit for an indefinite grant."
+        reason: { type: string }
+
+    CompRevokeInput:
+      type: object
+      required: [user_id, reason]
+      properties:
+        user_id: { type: integer, format: int64 }
+        reason: { type: string }
