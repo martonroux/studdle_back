@@ -45,7 +45,7 @@ func registerPublicRoutes(mux *http.ServeMux, d *deps) {
 	userH := handler.NewUserHandler(d.user, d.emailVer)
 	emailVerH := handler.NewEmailVerificationHandler(d.emailVer, d.user)
 	imgH := handler.NewImageHandler(d.image)
-	billH := handler.NewBillingHandler(d.billing, d.user, d.cfg.AppURL+"/billing", d.cfg.AppURL+"/pricing")
+	billH := handler.NewBillingHandler(d.billing, d.user, d.prices, d.cfg.AppURL+"/billing", d.cfg.AppURL+"/pricing")
 	billH.SetStripeLivemode(d.cfg.StripeMode == "live")
 
 	docsH := handler.NewDocsHandler()
@@ -94,7 +94,7 @@ func registerAuthSocialRoutes(mux *http.ServeMux, d *deps, auth func(http.Handle
 	collabH := handler.NewCollaborationHandler(d.collab)
 	prefH := handler.NewPreferencesHandler(d.preferences)
 	gamH := handler.NewGamificationHandler(d.gamification)
-	billH := handler.NewBillingHandler(d.billing, d.user, d.cfg.AppURL+"/billing", d.cfg.AppURL+"/pricing")
+	billH := handler.NewBillingHandler(d.billing, d.user, d.prices, d.cfg.AppURL+"/billing", d.cfg.AppURL+"/pricing")
 	billH.SetStripeLivemode(d.cfg.StripeMode == "live")
 
 	mux.Handle("POST /friendship-accept", auth(friendH.Accept))

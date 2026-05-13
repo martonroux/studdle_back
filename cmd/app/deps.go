@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -63,6 +64,7 @@ type deps struct {
 	plan         *pkgplan.Service           // plan provides study plan stubs
 	duel         *duel.Service              // duel handles real-time duel sessions
 	billing      *pkgbilling.Service        // billing manages subscription and payments
+	prices       billingadapter.PriceProvider // prices fetches live Stripe price data
 }
 
 // infra groups infrastructure-level singletons built before domain services.
@@ -233,6 +235,12 @@ func buildStubServices(cfg *config.Config, pool *pgxpool.Pool, inf infra, dom do
 
 // assembleDeps merges all constructed pieces into a single deps value.
 func assembleDeps(cfg *config.Config, pool *pgxpool.Pool, inf infra, dom domainSvcs, stubs stubSvcs) *deps {
+	pricesProvider := billingadapter.NewCachedPriceProvider(
+		inf.billing,
+		cfg.StripePriceProMonth,
+		cfg.StripePriceProAnnual,
+		5*time.Minute,
+	)
 	return &deps{
 		cfg:          cfg,
 		db:           pool,
@@ -258,6 +266,7 @@ func assembleDeps(cfg *config.Config, pool *pgxpool.Pool, inf infra, dom domainS
 		plan:         stubs.plan,
 		duel:         stubs.duel,
 		billing:      stubs.billing,
+		prices:       pricesProvider,
 	}
 }
 

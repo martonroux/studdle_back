@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
+	"math"
 	"net/http"
 	"sync"
 	"time"
@@ -13,6 +15,7 @@ import (
 	"golang.org/x/time/rate"
 
 	"studbud/backend/internal/authctx"
+	billingadapter "studbud/backend/internal/billing"
 	"studbud/backend/internal/httpx"
 	"studbud/backend/internal/myErrors"
 	"studbud/backend/pkg/billing"
@@ -21,20 +24,23 @@ import (
 
 // BillingHandler exposes Spec C billing endpoints.
 type BillingHandler struct {
-	svc            *billing.Service // svc is the billing service
-	users          *user.Service    // users is used to fetch the caller's email
-	billingPageURL string           // billingPageURL is the Stripe checkout success redirect
-	pricingPageURL string           // pricingPageURL is the Stripe checkout cancel redirect
-	expectLive     bool             // expectLive mirrors STRIPE_MODE=="live"
-	limMu          sync.Mutex       // limMu guards lim
-	lim            map[int64]*rate.Limiter // lim holds per-user rate limiters
+	svc            *billing.Service              // svc is the billing service
+	users          *user.Service                 // users is used to fetch the caller's email
+	prices         billingadapter.PriceProvider  // prices provides live plan pricing from Stripe
+	billingPageURL string                        // billingPageURL is the Stripe checkout success redirect
+	pricingPageURL string                        // pricingPageURL is the Stripe checkout cancel redirect
+	expectLive     bool                          // expectLive mirrors STRIPE_MODE=="live"
+	limMu          sync.Mutex                    // limMu guards lim
+	lim            map[int64]*rate.Limiter        // lim holds per-user rate limiters
 }
 
 // NewBillingHandler constructs a BillingHandler.
-func NewBillingHandler(svc *billing.Service, users *user.Service, billingPageURL, pricingPageURL string) *BillingHandler {
+// prices is a PriceProvider that fetches live plan pricing from Stripe.
+func NewBillingHandler(svc *billing.Service, users *user.Service, prices billingadapter.PriceProvider, billingPageURL, pricingPageURL string) *BillingHandler {
 	return &BillingHandler{
 		svc:            svc,
 		users:          users,
+		prices:         prices,
 		billingPageURL: billingPageURL,
 		pricingPageURL: pricingPageURL,
 		lim:            map[int64]*rate.Limiter{},
@@ -115,14 +121,46 @@ type planTile struct {
 }
 
 // GetPlans handles GET /billing/plans.
-// Public: prices are config-driven and safe to expose.
+// Public: fetches live prices from Stripe and returns the two plan tiles.
 func (h *BillingHandler) GetPlans(w http.ResponseWriter, r *http.Request) {
-	discount := 29
-	tiles := []planTile{
-		{Plan: "pro_monthly", PriceEur: 6.99, Interval: "month"},
-		{Plan: "pro_annual", PriceEur: 59.99, Interval: "year", DiscountPct: &discount},
+	p, err := h.prices.GetPrices(r.Context())
+	if err != nil {
+		log.Printf("billing.GetPlans: GetPrices failed: %v", err)
+		httpx.WriteError(w, &myErrors.AppError{
+			Code:    "prices_unavailable",
+			Message: "pricing temporarily unavailable",
+			Wrapped: myErrors.ErrStripe,
+		})
+		return
 	}
-	httpx.WriteJSON(w, http.StatusOK, tiles)
+	if p.Monthly.Currency != "eur" || p.Annual.Currency != "eur" {
+		log.Printf("billing.GetPlans: non-EUR currency monthly=%q annual=%q", p.Monthly.Currency, p.Annual.Currency)
+		httpx.WriteError(w, &myErrors.AppError{
+			Code:    "prices_unavailable",
+			Message: "pricing temporarily unavailable",
+			Wrapped: myErrors.ErrStripe,
+		})
+		return
+	}
+
+	monthly := planTile{
+		Plan:     "pro_monthly",
+		PriceEur: float64(p.Monthly.Amount) / 100.0,
+		Interval: "month",
+	}
+	annual := planTile{
+		Plan:     "pro_annual",
+		PriceEur: float64(p.Annual.Amount) / 100.0,
+		Interval: "year",
+	}
+	if p.Monthly.Amount > 0 {
+		raw := 1.0 - float64(p.Annual.Amount)/float64(p.Monthly.Amount*12)
+		d := int(math.Round(raw * 100))
+		if d > 0 {
+			annual.DiscountPct = &d
+		}
+	}
+	httpx.WriteJSON(w, http.StatusOK, []planTile{monthly, annual})
 }
 
 // Refresh handles POST /billing/refresh.

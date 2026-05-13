@@ -23,7 +23,7 @@ func TestBillingPortal_NoCustomerReturns404(t *testing.T) {
 	signer := jwtsigner.NewSigner("a-minimum-32-byte-secret-xxxxxxxxxx", "studbud-test", time.Hour)
 	userSvc := pkguser.NewService(pool, signer)
 	billSvc := pkgbilling.NewService(pool, &testutil.FakeBilling{}, pkgbilling.PriceMap{})
-	h := handler.NewBillingHandler(billSvc, userSvc, "https://app/billing", "https://app/pricing")
+	h := handler.NewBillingHandler(billSvc, userSvc, &stubProvider{}, "https://app/billing", "https://app/pricing")
 
 	tok, _ := signer.Sign(jwtsigner.Claims{UID: u.ID, EmailVerified: true, IsAdmin: false})
 	req := httptest.NewRequest("POST", "/billing/portal", http.NoBody)
@@ -48,7 +48,7 @@ func TestBillingPortal_HappyPath(t *testing.T) {
 	userSvc := pkguser.NewService(pool, signer)
 	fake := &testutil.FakeBilling{PortalURL: "https://portal.stripe.test/p"}
 	billSvc := pkgbilling.NewService(pool, fake, pkgbilling.PriceMap{})
-	h := handler.NewBillingHandler(billSvc, userSvc, "https://app/billing", "https://app/pricing")
+	h := handler.NewBillingHandler(billSvc, userSvc, &stubProvider{}, "https://app/billing", "https://app/pricing")
 
 	tok, _ := signer.Sign(jwtsigner.Claims{UID: u.ID, EmailVerified: true, IsAdmin: false})
 	req := httptest.NewRequest("POST", "/billing/portal", http.NoBody)

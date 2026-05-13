@@ -15,6 +15,7 @@ type FakeBilling struct {
 	Subscriptions []billing.Subscription
 	Event         *billing.WebhookEvent
 	WebhookErr    error
+	Price         billing.PriceData
 }
 
 // CreateCustomer returns the configured CustomerID or a default test value.
@@ -48,4 +49,9 @@ func (f *FakeBilling) ListSubscriptionsByCustomer(ctx context.Context, customerI
 // ConstructWebhookEvent returns the configured Event and WebhookErr.
 func (f *FakeBilling) ConstructWebhookEvent(payload []byte, signature string) (*billing.WebhookEvent, error) {
 	return f.Event, f.WebhookErr
+}
+
+// GetPrice returns the configured PriceData regardless of priceID.
+func (f *FakeBilling) GetPrice(ctx context.Context, priceID string) (billing.PriceData, error) {
+	return f.Price, nil
 }

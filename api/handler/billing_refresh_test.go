@@ -21,7 +21,7 @@ func TestBillingRefresh_Returns200(t *testing.T) {
 	billSvc := pkgbilling.NewService(pool, &testutil.FakeBilling{}, pkgbilling.PriceMap{})
 	signer := jwtsigner.NewSigner("a-minimum-32-byte-secret-xxxxxxxxxx", "studbud-test", time.Hour)
 	userSvc := pkguser.NewService(pool, signer)
-	h := handler.NewBillingHandler(billSvc, userSvc, "https://app/billing", "https://app/pricing")
+	h := handler.NewBillingHandler(billSvc, userSvc, &stubProvider{}, "https://app/billing", "https://app/pricing")
 
 	tok, _ := signer.Sign(jwtsigner.Claims{UID: u.ID, EmailVerified: true, IsAdmin: false})
 	req := httptest.NewRequest("POST", "/billing/refresh", nil)
@@ -41,7 +41,7 @@ func TestBillingRefresh_RateLimitAfter10(t *testing.T) {
 	billSvc := pkgbilling.NewService(pool, &testutil.FakeBilling{}, pkgbilling.PriceMap{})
 	signer := jwtsigner.NewSigner("a-minimum-32-byte-secret-xxxxxxxxxx", "studbud-test", time.Hour)
 	userSvc := pkguser.NewService(pool, signer)
-	h := handler.NewBillingHandler(billSvc, userSvc, "https://app/billing", "https://app/pricing")
+	h := handler.NewBillingHandler(billSvc, userSvc, &stubProvider{}, "https://app/billing", "https://app/pricing")
 
 	tok, _ := signer.Sign(jwtsigner.Claims{UID: u.ID, EmailVerified: true, IsAdmin: false})
 	// First 10 calls must succeed.

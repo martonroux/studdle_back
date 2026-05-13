@@ -44,6 +44,13 @@ type WebhookEvent struct {
 	Raw      []byte
 }
 
+// PriceData is a Stripe Price flattened to the fields the pricing UI needs.
+type PriceData struct {
+	Amount   int64  // Amount is the price in the smallest currency unit (e.g. cents).
+	Currency string // Currency is the ISO 4217 lowercase code (e.g. "eur").
+	Interval string // Interval is "month" or "year" for recurring prices, "" otherwise.
+}
+
 // Client is the billing-provider interface.
 type Client interface {
 	CreateCustomer(ctx context.Context, email string, userID int64) (string, error)
@@ -52,6 +59,7 @@ type Client interface {
 	RetrieveSubscription(ctx context.Context, subID string) (*Subscription, error)
 	ListSubscriptionsByCustomer(ctx context.Context, customerID string, limit int) ([]Subscription, error)
 	ConstructWebhookEvent(payload []byte, signature string) (*WebhookEvent, error)
+	GetPrice(ctx context.Context, priceID string) (PriceData, error)
 }
 
 // NoopClient returns ErrNotImplemented for every call.
@@ -85,4 +93,9 @@ func (NoopClient) ListSubscriptionsByCustomer(ctx context.Context, customerID st
 // ConstructWebhookEvent returns ErrNotImplemented.
 func (NoopClient) ConstructWebhookEvent(payload []byte, signature string) (*WebhookEvent, error) {
 	return nil, myErrors.ErrNotImplemented
+}
+
+// GetPrice returns ErrNotImplemented.
+func (NoopClient) GetPrice(ctx context.Context, priceID string) (PriceData, error) {
+	return PriceData{}, myErrors.ErrNotImplemented
 }

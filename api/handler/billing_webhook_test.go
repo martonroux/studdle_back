@@ -21,7 +21,7 @@ func newBillingHandlerForTest(t *testing.T, svc *pkgbilling.Service) *handler.Bi
 	pool := testutil.OpenTestDB(t)
 	signer := jwtsigner.NewSigner("a-minimum-32-byte-secret-xxxxxxxxxx", "studbud-test", time.Hour)
 	userSvc := pkguser.NewService(pool, signer)
-	return handler.NewBillingHandler(svc, userSvc, "https://app/billing", "https://app/pricing")
+	return handler.NewBillingHandler(svc, userSvc, &stubProvider{}, "https://app/billing", "https://app/pricing")
 }
 
 func TestBillingWebhook_LivemodeMismatchReturns400(t *testing.T) {

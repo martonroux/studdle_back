@@ -24,7 +24,7 @@ func TestBillingCheckout_ReturnsURL(t *testing.T) {
 	billSvc := pkgbilling.NewService(pool, fake, pkgbilling.PriceMap{Monthly: "price_M", Annual: "price_A"})
 	signer := jwtsigner.NewSigner("a-minimum-32-byte-secret-xxxxxxxxxx", "studbud-test", time.Hour)
 	userSvc := pkguser.NewService(pool, signer)
-	h := handler.NewBillingHandler(billSvc, userSvc, "https://app/billing", "https://app/pricing")
+	h := handler.NewBillingHandler(billSvc, userSvc, &stubProvider{}, "https://app/billing", "https://app/pricing")
 
 	tok, _ := signer.Sign(jwtsigner.Claims{UID: u.ID, EmailVerified: true, IsAdmin: false})
 	body, _ := json.Marshal(map[string]string{"plan": "pro_monthly"})
@@ -54,7 +54,7 @@ func TestBillingCheckout_AlreadySubscribedReturnsConflict(t *testing.T) {
 	signer := jwtsigner.NewSigner("a-minimum-32-byte-secret-xxxxxxxxxx", "studbud-test", time.Hour)
 	userSvc := pkguser.NewService(pool, signer)
 	billSvc := pkgbilling.NewService(pool, &testutil.FakeBilling{}, pkgbilling.PriceMap{Monthly: "price_M", Annual: "price_A"})
-	h := handler.NewBillingHandler(billSvc, userSvc, "https://app/billing", "https://app/pricing")
+	h := handler.NewBillingHandler(billSvc, userSvc, &stubProvider{}, "https://app/billing", "https://app/pricing")
 
 	tok, _ := signer.Sign(jwtsigner.Claims{UID: u.ID, EmailVerified: true, IsAdmin: false})
 	body, _ := json.Marshal(map[string]string{"plan": "pro_monthly"})

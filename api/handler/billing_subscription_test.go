@@ -25,7 +25,7 @@ func TestGetSubscription_NoRow_ReturnsStatusNone(t *testing.T) {
 	signer := jwtsigner.NewSigner("a-minimum-32-byte-secret-xxxxxxxxxx", "studbud-test", time.Hour)
 	billSvc := pkgbilling.NewService(pool, internalbilling.NoopClient{}, pkgbilling.PriceMap{})
 	userSvc := pkguser.NewService(pool, signer)
-	h := handler.NewBillingHandler(billSvc, userSvc, "https://app/billing", "https://app/pricing")
+	h := handler.NewBillingHandler(billSvc, userSvc, &stubProvider{}, "https://app/billing", "https://app/pricing")
 
 	tok, _ := signer.Sign(jwtsigner.Claims{UID: u.ID, EmailVerified: true, IsAdmin: false})
 	req := httptest.NewRequest("GET", "/billing/subscription", nil)
@@ -63,7 +63,7 @@ func TestGetSubscription_TrialingRow_ReturnsActiveTrue(t *testing.T) {
 	signer := jwtsigner.NewSigner("a-minimum-32-byte-secret-xxxxxxxxxx", "studbud-test", time.Hour)
 	billSvc := pkgbilling.NewService(pool, internalbilling.NoopClient{}, pkgbilling.PriceMap{})
 	userSvc := pkguser.NewService(pool, signer)
-	h := handler.NewBillingHandler(billSvc, userSvc, "https://app/billing", "https://app/pricing")
+	h := handler.NewBillingHandler(billSvc, userSvc, &stubProvider{}, "https://app/billing", "https://app/pricing")
 
 	tok, _ := signer.Sign(jwtsigner.Claims{UID: u.ID, EmailVerified: true, IsAdmin: false})
 	req := httptest.NewRequest("GET", "/billing/subscription", nil)
