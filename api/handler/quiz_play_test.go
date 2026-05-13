@@ -168,3 +168,78 @@ func TestPostRetake_409IfInProgress(t *testing.T) {
 		t.Fatalf("status %d", w.Code)
 	}
 }
+
+func TestGetAttempt_ReturnsReviewPayload(t *testing.T) {
+	pool := testutil.OpenTestDB(t)
+	testutil.Reset(t, pool)
+	u := testutil.NewVerifiedUser(t, pool)
+	qid := testutil.NewQuiz(t, pool, u.ID, 1) // single MCQ, correct_index=2
+
+	qsvc := quiz.NewService(pool, nil)
+	att, q1, _, _ := qsvc.Start(context.Background(), u.ID, qid)
+	_, err := qsvc.Answer(context.Background(), u.ID, att.ID, q1.ID,
+		json.RawMessage(`{"index":2}`))
+	if err != nil {
+		t.Fatalf("answer: %v", err)
+	}
+
+	h := handler.NewQuizHandler(qsvc, access.NewService(pool))
+	req := httptest.NewRequest("GET", "/quizzes/{id}/attempts/{aid}", nil)
+	req.SetPathValue("id", strconv.FormatInt(qid, 10))
+	req.SetPathValue("aid", strconv.FormatInt(att.ID, 10))
+	req = req.WithContext(authctx.WithIdentity(context.Background(), u.ID, true, false))
+	w := httptest.NewRecorder()
+	h.GetAttempt(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("status %d body=%s", w.Code, w.Body.String())
+	}
+	var view struct {
+		Attempt struct {
+			State string `json:"state"`
+		} `json:"attempt"`
+		Questions []struct {
+			Stem string `json:"stem"`
+		} `json:"questions"`
+	}
+	_ = json.Unmarshal(w.Body.Bytes(), &view)
+	if view.Attempt.State != "completed" {
+		t.Fatalf("state = %q, want completed", view.Attempt.State)
+	}
+	if len(view.Questions) != 1 {
+		t.Fatalf("got %d question reviews, want 1", len(view.Questions))
+	}
+}
+
+func TestGetHistory_ReturnsAttempts(t *testing.T) {
+	pool := testutil.OpenTestDB(t)
+	testutil.Reset(t, pool)
+	u := testutil.NewVerifiedUser(t, pool)
+	qid := testutil.NewQuiz(t, pool, u.ID, 1)
+
+	qsvc := quiz.NewService(pool, nil)
+	// First attempt complete.
+	att1, q1, _, _ := qsvc.Start(context.Background(), u.ID, qid)
+	_, _ = qsvc.Answer(context.Background(), u.ID, att1.ID, q1.ID,
+		json.RawMessage(`{"index":2}`))
+	// Second attempt via Retake.
+	_, _ = qsvc.Retake(context.Background(), u.ID, qid)
+
+	h := handler.NewQuizHandler(qsvc, access.NewService(pool))
+	req := httptest.NewRequest("GET", "/quizzes/{id}/history", nil)
+	req.SetPathValue("id", strconv.FormatInt(qid, 10))
+	req = req.WithContext(authctx.WithIdentity(context.Background(), u.ID, true, false))
+	w := httptest.NewRecorder()
+	h.History(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("status %d", w.Code)
+	}
+	var resp struct {
+		Attempts []struct {
+			ID int64 `json:"ID"` // pkg/quiz.Attempt has no json tags; fields serialise capitalised
+		} `json:"attempts"`
+	}
+	_ = json.Unmarshal(w.Body.Bytes(), &resp)
+	if len(resp.Attempts) != 2 {
+		t.Fatalf("got %d, want 2; body=%s", len(resp.Attempts), w.Body.String())
+	}
+}

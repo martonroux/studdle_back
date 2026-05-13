@@ -222,3 +222,37 @@ func (h *QuizHandler) Resume(w http.ResponseWriter, r *http.Request) {
 		"progress":     prog,
 	})
 }
+
+// GetAttempt handles GET /quizzes/{id}/attempts/{aid}.
+// Returns the full review payload (score + per-question outcome).
+func (h *QuizHandler) GetAttempt(w http.ResponseWriter, r *http.Request) {
+	uid := authctx.UID(r.Context())
+	aid, err := attemptIDFromPath(r)
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	view, err := h.svc.GetAttempt(r.Context(), uid, aid)
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, view)
+}
+
+// History handles GET /quizzes/{id}/history.
+// Returns every attempt the user has made on this quiz, newest first.
+func (h *QuizHandler) History(w http.ResponseWriter, r *http.Request) {
+	uid := authctx.UID(r.Context())
+	qid, err := quizIDFromPath(r)
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	atts, err := h.svc.History(r.Context(), uid, qid)
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{"attempts": atts})
+}
