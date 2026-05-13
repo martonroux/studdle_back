@@ -97,6 +97,35 @@ func insertSubject(t *testing.T, pool *pgxpool.Pool, ownerID int64, name, visibi
 	return &SubjectFixture{ID: id, OwnerID: ownerID, Name: name}
 }
 
+// NewQuiz inserts a kind=global quizzes row owned by ownerID, plus questionCount
+// MCQ quiz_questions rows (correct index = 2 for all). Returns the new quiz id.
+// Creates a minimal subject internally so callers don't need to seed one.
+func NewQuiz(t *testing.T, pool *pgxpool.Pool, ownerID int64, questionCount int) int64 {
+	t.Helper()
+	sub := NewSubject(t, pool, ownerID)
+	var qid int64
+	err := pool.QueryRow(context.Background(), `
+		INSERT INTO quizzes (user_id, subject_id, kind, source, card_pool_jsonb, settings_jsonb,
+		                     question_count, model, prompt_hash)
+		VALUES ($1, $2, 'global', 'user', '[]'::jsonb, '{}'::jsonb, $3, 'test', 'h')
+		RETURNING id`, ownerID, sub.ID, questionCount,
+	).Scan(&qid)
+	if err != nil {
+		t.Fatalf("insert quiz: %v", err)
+	}
+	for i := 1; i <= questionCount; i++ {
+		_, err := pool.Exec(context.Background(), `
+			INSERT INTO quiz_questions (quiz_id, ordinal, question_type, stem,
+			                            options_jsonb, correct_jsonb, referenced_fc_ids_jsonb)
+			VALUES ($1, $2, 'multi_choice', $3, '["A","B","C","D"]'::jsonb, '{"index":2}'::jsonb, '[]'::jsonb)`,
+			qid, i, fmt.Sprintf("Question %d", i))
+		if err != nil {
+			t.Fatalf("insert quiz_questions[%d]: %v", i, err)
+		}
+	}
+	return qid
+}
+
 // NewChapter inserts a chapter under the subject.
 func NewChapter(t *testing.T, pool *pgxpool.Pool, subjectID int64, title string) int64 {
 	t.Helper()
