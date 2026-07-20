@@ -24,14 +24,14 @@ import (
 
 // BillingHandler exposes Spec C billing endpoints.
 type BillingHandler struct {
-	svc            *billing.Service              // svc is the billing service
-	users          *user.Service                 // users is used to fetch the caller's email
-	prices         billingadapter.PriceProvider  // prices provides live plan pricing from Stripe
-	billingPageURL string                        // billingPageURL is the Stripe checkout success redirect
-	pricingPageURL string                        // pricingPageURL is the Stripe checkout cancel redirect
-	expectLive     bool                          // expectLive mirrors STRIPE_MODE=="live"
-	limMu          sync.Mutex                    // limMu guards lim
-	lim            map[int64]*rate.Limiter        // lim holds per-user rate limiters
+	svc            *billing.Service             // svc is the billing service
+	users          *user.Service                // users is used to fetch the caller's email
+	prices         billingadapter.PriceProvider // prices provides live plan pricing from Stripe
+	billingPageURL string                       // billingPageURL is the Stripe checkout success redirect
+	pricingPageURL string                       // pricingPageURL is the Stripe checkout cancel redirect
+	expectLive     bool                         // expectLive mirrors STRIPE_MODE=="live"
+	limMu          sync.Mutex                   // limMu guards lim
+	lim            map[int64]*rate.Limiter      // lim holds per-user rate limiters
 }
 
 // NewBillingHandler constructs a BillingHandler.

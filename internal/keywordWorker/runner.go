@@ -15,7 +15,7 @@ import (
 // Runner consumes one claimed job: invokes the AI, post-processes, writes
 // keyword rows.
 type Runner struct {
-	db *pgxpool.Pool      // db is the shared pool
+	db *pgxpool.Pool       // db is the shared pool
 	ai *aipipeline.Service // ai is the keyword-extraction primitive
 }
 

@@ -58,17 +58,17 @@ type AIChunk struct {
 
 // AIRequest is the pipeline invocation shape.
 type AIRequest struct {
-	UserID      int64           // UserID is the authenticated user running the call
-	Feature     FeatureKey      // Feature selects quota counter + concurrent-cap policy
-	SubjectID   int64           // SubjectID must be set for generation features
-	FlashcardID int64           // FlashcardID is non-zero only for FeatureCheckFlashcard
-	Prompt      string          // Prompt is the assembled user-facing prompt body
-	PDFBytes    []byte          // PDFBytes is populated only for FeatureGenerateFromPDF
-	PDFPages    int             // PDFPages is the declared page count (pre-counted by handler)
-	Images      []aiProvider.ImagePart // Images is populated only for FeatureGenerateFromPDF (pre-rasterized)
-	Schema      json.RawMessage // Schema is the tool-use JSON schema for the expected output
-	Metadata    map[string]any  // Metadata is persisted into ai_jobs.metadata (style, focus, coverage...)
-	DropChapters bool           // DropChapters suppresses ChunkChapter emissions when chapters are disabled
+	UserID       int64                  // UserID is the authenticated user running the call
+	Feature      FeatureKey             // Feature selects quota counter + concurrent-cap policy
+	SubjectID    int64                  // SubjectID must be set for generation features
+	FlashcardID  int64                  // FlashcardID is non-zero only for FeatureCheckFlashcard
+	Prompt       string                 // Prompt is the assembled user-facing prompt body
+	PDFBytes     []byte                 // PDFBytes is populated only for FeatureGenerateFromPDF
+	PDFPages     int                    // PDFPages is the declared page count (pre-counted by handler)
+	Images       []aiProvider.ImagePart // Images is populated only for FeatureGenerateFromPDF (pre-rasterized)
+	Schema       json.RawMessage        // Schema is the tool-use JSON schema for the expected output
+	Metadata     map[string]any         // Metadata is persisted into ai_jobs.metadata (style, focus, coverage...)
+	DropChapters bool                   // DropChapters suppresses ChunkChapter emissions when chapters are disabled
 }
 
 // QuotaLimits holds per-feature daily caps.

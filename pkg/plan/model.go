@@ -4,13 +4,13 @@ import "time"
 
 // Candidate is one cross-subject flashcard returned by the shortlist query.
 type Candidate struct {
-	ID            int64   `json:"id"`            // ID is the flashcard primary key
-	Title         string  `json:"title"`         // Title is the flashcard title
-	SubjectID     int64   `json:"subjectId"`     // SubjectID is the owning subject
-	SubjectName   string  `json:"subjectName"`   // SubjectName is the human-readable subject label
-	Keywords      []string `json:"keywords"`     // Keywords lists the FC's tagged keywords
-	OverlapScore  int     `json:"overlapScore"`  // OverlapScore is the count of keywords shared with the exam subject
-	WeightSum     float64 `json:"weightSum"`     // WeightSum is the cumulative tf-idf-style weight of overlapping keywords
+	ID           int64    `json:"id"`           // ID is the flashcard primary key
+	Title        string   `json:"title"`        // Title is the flashcard title
+	SubjectID    int64    `json:"subjectId"`    // SubjectID is the owning subject
+	SubjectName  string   `json:"subjectName"`  // SubjectName is the human-readable subject label
+	Keywords     []string `json:"keywords"`     // Keywords lists the FC's tagged keywords
+	OverlapScore int      `json:"overlapScore"` // OverlapScore is the count of keywords shared with the exam subject
+	WeightSum    float64  `json:"weightSum"`    // WeightSum is the cumulative tf-idf-style weight of overlapping keywords
 }
 
 // PrimaryCard is one flashcard in the exam's primary subject, supplied as plan input.
@@ -58,7 +58,7 @@ type Drift struct {
 
 // PlanView is the GET /exams/:id/plan response shape.
 type PlanView struct {
-	Plan   Plan        `json:"plan"`   // Plan is the stored plan body
-	Today  TodayBucket `json:"today"`  // Today is the convenience bucket the UI renders by default
-	Drift  Drift       `json:"drift"`  // Drift is the regen-suggestion projection
+	Plan  Plan        `json:"plan"`  // Plan is the stored plan body
+	Today TodayBucket `json:"today"` // Today is the convenience bucket the UI renders by default
+	Drift Drift       `json:"drift"` // Drift is the regen-suggestion projection
 }

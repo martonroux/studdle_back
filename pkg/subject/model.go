@@ -35,7 +35,7 @@ type StatsResponse struct {
 	OkCount        int     `json:"okCount"`        // OkCount is cards whose last review was ok (1)
 	BadCount       int     `json:"badCount"`       // BadCount is cards whose last review was bad (0)
 	NewCount       int     `json:"newCount"`       // NewCount is cards not yet reviewed (-1)
-	CardsStudied  int     `json:"cardsStudied"`   // CardsStudied is TotalCards - NewCount
+	CardsStudied   int     `json:"cardsStudied"`   // CardsStudied is TotalCards - NewCount
 	MasteryPercent float64 `json:"masteryPercent"` // MasteryPercent weights good=1, ok=0.5 against TotalCards
 }
 

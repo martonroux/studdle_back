@@ -10,10 +10,10 @@ const dateLayout = "2006-01-02"
 
 // PostProcessInput is the trimmed view of a raw AI response we hand to NormalizeDays.
 type PostProcessInput struct {
-	Days        []Day  // Days is the raw AI-emitted list, possibly malformed
-	PrimaryIDs  []int64 // PrimaryIDs is the allowed list of primary-subject FC IDs
-	CrossIDs    []int64 // CrossIDs is the allowed list of cross-subject FC IDs
-	DeeperIDs   []int64 // DeeperIDs is the allowed list of deeper-dive FC IDs (typically a subset of primary)
+	Days       []Day   // Days is the raw AI-emitted list, possibly malformed
+	PrimaryIDs []int64 // PrimaryIDs is the allowed list of primary-subject FC IDs
+	CrossIDs   []int64 // CrossIDs is the allowed list of cross-subject FC IDs
+	DeeperIDs  []int64 // DeeperIDs is the allowed list of deeper-dive FC IDs (typically a subset of primary)
 }
 
 // NormalizeDays cleans an AI-generated plan:

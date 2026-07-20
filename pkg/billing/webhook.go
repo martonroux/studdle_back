@@ -59,4 +59,3 @@ func (s *Service) recordEvent(ctx context.Context, event *billingadapter.Webhook
 	}
 	return false, fmt.Errorf("record event:\n%w", err)
 }
-

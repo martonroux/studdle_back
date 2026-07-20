@@ -12,10 +12,10 @@ import (
 type Config struct {
 	Port        string        // Port is the HTTP listen port (e.g. "8080")
 	Env         string        // Env is "dev", "test", or "prod"
-	FrontendURL  string   // FrontendURL is the primary Vue client origin (used for email links)
-	CORSOrigins  []string // CORSOrigins is the full allowlist echoed back for Access-Control-Allow-Origin
-	BackendURL   string   // BackendURL is this server's public URL
-	AppURL       string   // AppURL is the user-facing app origin for Stripe redirects (defaults to FrontendURL)
+	FrontendURL string        // FrontendURL is the primary Vue client origin (used for email links)
+	CORSOrigins []string      // CORSOrigins is the full allowlist echoed back for Access-Control-Allow-Origin
+	BackendURL  string        // BackendURL is this server's public URL
+	AppURL      string        // AppURL is the user-facing app origin for Stripe redirects (defaults to FrontendURL)
 	DatabaseURL string        // DatabaseURL is the full pgx connection string
 	JWTSecret   string        // JWTSecret signs auth tokens (>=32 bytes)
 	JWTIssuer   string        // JWTIssuer is the "iss" claim value
