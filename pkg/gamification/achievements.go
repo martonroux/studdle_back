@@ -19,3 +19,12 @@ func catalog() map[string]Achievement {
 	}
 	return m
 }
+
+// AllAchievements returns a copy of the full achievement catalog.
+// Callers outside this package (e.g. user stats) use this to derive the
+// total achievement count instead of hardcoding it.
+func AllAchievements() []Achievement {
+	out := make([]Achievement, len(achievementDefs))
+	copy(out, achievementDefs)
+	return out
+}

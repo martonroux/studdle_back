@@ -13,6 +13,7 @@ import (
 
 	jwtsigner "studbud/backend/internal/jwt"
 	"studbud/backend/internal/myErrors"
+	"studbud/backend/pkg/gamification"
 )
 
 // Service owns user register, login, profile-picture, and stats.
@@ -122,9 +123,10 @@ func (s *Service) Stats(ctx context.Context, uid int64) (*UserStatsResponse, err
 		out.MasteryPercent = (float64(out.GoodCount) + float64(out.OkCount)*0.5) / float64(out.TotalCards)
 	}
 	if err := s.db.QueryRow(ctx, qAchievementProgress, uid).
-		Scan(&out.BadgesUnlocked, &out.BadgesTotal); err != nil {
+		Scan(&out.BadgesUnlocked); err != nil {
 		return nil, fmt.Errorf("achievement progress:\n%w", err)
 	}
+	out.BadgesTotal = len(gamification.AllAchievements())
 	return out, nil
 }
 

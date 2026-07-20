@@ -37,8 +37,6 @@ const (
     `
 
 	qAchievementProgress = `
-        SELECT
-            (SELECT COUNT(*) FROM unlocked_achievements WHERE user_id = $1),
-            12
+        SELECT COUNT(*) FROM unlocked_achievements WHERE user_id = $1
     `
 )

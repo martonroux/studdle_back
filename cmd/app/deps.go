@@ -203,7 +203,7 @@ func buildDomainServices(cfg *config.Config, pool *pgxpool.Pool, inf infra) doma
 		subjectSub:   subjectsub.NewService(pool, acc),
 		collab:       collaboration.NewService(pool, acc),
 		preferences:  preferences.NewService(pool),
-		gamification: gamification.NewService(pool),
+		gamification: gamification.NewService(pool, acc),
 		exam:         exam.NewService(pool, acc),
 	}
 }
