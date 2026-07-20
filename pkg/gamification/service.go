@@ -10,17 +10,19 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"studbud/backend/internal/myErrors"
+	"studbud/backend/pkg/access"
 )
 
 // Service owns gamification state: streaks, daily goals, sessions, achievements.
 type Service struct {
-	db  *pgxpool.Pool    // db is the shared pool
-	now func() time.Time // now lets tests inject a fixed clock
+	db     *pgxpool.Pool    // db is the shared pool
+	access *access.Service  // access resolves subject permissions
+	now    func() time.Time // now lets tests inject a fixed clock
 }
 
 // NewService constructs a Service with the real clock.
-func NewService(db *pgxpool.Pool) *Service {
-	return &Service{db: db, now: time.Now}
+func NewService(db *pgxpool.Pool, acc *access.Service) *Service {
+	return &Service{db: db, access: acc, now: time.Now}
 }
 
 // SetClock replaces the clock; intended for tests only.
@@ -40,9 +42,13 @@ func (s *Service) GetState(ctx context.Context, uid int64) (Streak, DailyGoal, e
 }
 
 // RecordSession inserts a training session and updates streak, daily goal, achievements.
+// The caller must have at least viewer access on the subject.
 func (s *Service) RecordSession(ctx context.Context, uid int64, in RecordSessionInput) (*RecordSessionResult, error) {
 	if in.CardCount < 0 || in.DurationMs < 0 {
 		return nil, myErrors.ErrInvalidInput
+	}
+	if err := s.assertSubjectAccess(ctx, uid, in.SubjectID); err != nil {
+		return nil, err
 	}
 	sess, err := s.insertSession(ctx, uid, in)
 	if err != nil {
@@ -61,6 +67,18 @@ func (s *Service) RecordSession(ctx context.Context, uid int64, in RecordSession
 		return nil, err
 	}
 	return &RecordSessionResult{Session: sess, Streak: st, DailyGoal: dg, NewlyAwarded: awards}, nil
+}
+
+// assertSubjectAccess fails when the user can't even read the target subject.
+func (s *Service) assertSubjectAccess(ctx context.Context, uid, subjectID int64) error {
+	lvl, err := s.access.SubjectLevel(ctx, uid, subjectID)
+	if err != nil {
+		return err
+	}
+	if !lvl.CanRead() {
+		return myErrors.ErrForbidden
+	}
+	return nil
 }
 
 // insertSession persists one training_sessions row and returns it populated.
@@ -318,10 +336,11 @@ func (s *Service) totalCardsReviewed(ctx context.Context, uid int64) (int, error
 }
 
 // persistUnlocks writes each earned achievement, skipping those already unlocked, and
-// returns the set newly awarded by this call.
+// returns the set newly awarded by this call. Always non-nil so it serializes as
+// [] rather than null when nothing new was unlocked.
 func (s *Service) persistUnlocks(ctx context.Context, uid int64, earned map[string]bool) ([]Achievement, error) {
 	cat := catalog()
-	var newly []Achievement
+	newly := make([]Achievement, 0, len(earned))
 	for code := range earned {
 		var at time.Time
 		err := s.db.QueryRow(ctx, `

@@ -8,6 +8,7 @@ import (
 
 	jwtsigner "studbud/backend/internal/jwt"
 	"studbud/backend/internal/myErrors"
+	"studbud/backend/pkg/gamification"
 	"studbud/backend/testutil"
 )
 
@@ -60,5 +61,29 @@ func TestLoginWrongPassword(t *testing.T) {
 	_, err := svc.Login(context.Background(), LoginInput{Identifier: "alice", Password: "wrongpass"})
 	if !errors.Is(err, myErrors.ErrUnauthenticated) {
 		t.Fatalf("want ErrUnauthenticated, got %v", err)
+	}
+}
+
+// TestStatsBadgesTotalMatchesCatalog is a regression test for GAM-2: badgesTotal must be
+// derived from the real achievement catalog, not a hardcoded literal that can drift.
+func TestStatsBadgesTotalMatchesCatalog(t *testing.T) {
+	pool := testutil.OpenTestDB(t)
+	testutil.Reset(t, pool)
+	svc := NewService(pool, jwtsigner.NewSigner("a-minimum-32-byte-secret-xxxxxxxxxx", "studbud", time.Hour))
+
+	_, uid, err := svc.Register(context.Background(), RegisterInput{
+		Username: "carol", Email: "carol@x.com", Password: "password123",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	stats, err := svc.Stats(context.Background(), uid)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := len(gamification.AllAchievements())
+	if stats.BadgesTotal != want {
+		t.Fatalf("BadgesTotal = %d, want %d (catalog size)", stats.BadgesTotal, want)
 	}
 }
