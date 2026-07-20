@@ -171,7 +171,7 @@ func (h *BillingHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !h.limiterFor(uid).Allow() {
-		http.Error(w, "rate limited", http.StatusTooManyRequests)
+		httpx.WriteError(w, myErrors.ErrRateLimited)
 		return
 	}
 	if err := h.svc.RefreshFromStripe(r.Context(), uid); err != nil {

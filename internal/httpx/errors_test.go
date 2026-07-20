@@ -24,6 +24,7 @@ func TestWriteErrorMapsSentinels(t *testing.T) {
 		{"quota", myErrors.ErrQuotaExhausted, 429},
 		{"not impl", myErrors.ErrNotImplemented, 501},
 		{"stripe", myErrors.ErrStripe, 502},
+		{"rate limited", myErrors.ErrRateLimited, 429},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

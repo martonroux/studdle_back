@@ -66,6 +66,9 @@ var ErrContentPolicy = errors.New("ai content policy refusal")
 // ErrNotImplemented indicates a route exists but its feature is not yet implemented.
 var ErrNotImplemented = errors.New("not implemented")
 
+// ErrRateLimited indicates the caller exceeded a per-user request rate limit.
+var ErrRateLimited = errors.New("rate limited")
+
 // AppError carries contextual error information alongside a sentinel.
 // Use when the caller needs structured details (e.g., which field failed).
 type AppError struct {
