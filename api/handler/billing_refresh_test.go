@@ -1,6 +1,7 @@
 package handler_test
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -61,5 +62,24 @@ func TestBillingRefresh_RateLimitAfter10(t *testing.T) {
 	middleware.Auth(signer)(http.HandlerFunc(h.Refresh)).ServeHTTP(w, req)
 	if w.Code != http.StatusTooManyRequests {
 		t.Fatalf("11th call: status %d, want 429", w.Code)
+	}
+
+	// The 429 body must be the same JSON error envelope every other
+	// endpoint uses, not plain text — a frontend that does res.json()
+	// unconditionally on non-200 responses would otherwise throw.
+	ct := w.Header().Get("Content-Type")
+	if ct != "application/json" {
+		t.Fatalf("11th call: Content-Type = %q, want application/json", ct)
+	}
+	var resp map[string]any
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("11th call: body is not valid JSON: %v (body = %s)", err, w.Body.String())
+	}
+	errBody, ok := resp["error"].(map[string]any)
+	if !ok {
+		t.Fatalf("11th call: response missing 'error' object: %s", w.Body.String())
+	}
+	if errBody["code"] != "rate_limited" {
+		t.Fatalf("11th call: error.code = %v, want rate_limited", errBody["code"])
 	}
 }

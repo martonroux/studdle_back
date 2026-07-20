@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -116,6 +117,73 @@ func TestAdminBillingGrant_RejectsNonAdmin(t *testing.T) {
 
 	if w.Code != http.StatusForbidden {
 		t.Fatalf("status = %d, want 403; body = %s", w.Code, w.Body.String())
+	}
+}
+
+func TestAdminBillingGrant_RejectsMissingReason(t *testing.T) {
+	pool := testutil.OpenTestDB(t)
+	testutil.Reset(t, pool)
+	admin := testutil.NewVerifiedUser(t, pool)
+	testutil.MakeAdmin(t, pool, admin.ID)
+	target := testutil.NewVerifiedUser(t, pool)
+
+	srv := newAdminBillingServer(t, pool)
+	tok := mintAdminToken(t, admin.ID)
+
+	body, _ := json.Marshal(map[string]any{"user_id": target.ID})
+	req := httptest.NewRequest("POST", "/admin/comp-subscription", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+tok)
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+
+	srv.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400; body = %s", w.Code, w.Body.String())
+	}
+
+	var status string
+	err := pool.QueryRow(context.Background(),
+		`SELECT status FROM user_subscriptions WHERE user_id = $1`, target.ID,
+	).Scan(&status)
+	if err == nil {
+		t.Fatalf("expected no user_subscriptions row for target, got status = %q", status)
+	}
+}
+
+func TestAdminBillingGrant_NonexistentUser_Returns404WithoutRawDriverError(t *testing.T) {
+	pool := testutil.OpenTestDB(t)
+	testutil.Reset(t, pool)
+	admin := testutil.NewVerifiedUser(t, pool)
+	testutil.MakeAdmin(t, pool, admin.ID)
+
+	srv := newAdminBillingServer(t, pool)
+	tok := mintAdminToken(t, admin.ID)
+
+	body, _ := json.Marshal(map[string]any{"user_id": 9999999, "reason": "test"})
+	req := httptest.NewRequest("POST", "/admin/comp-subscription", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+tok)
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+
+	srv.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("status = %d, want 404; body = %s", w.Code, w.Body.String())
+	}
+	var resp map[string]any
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	errBody, ok := resp["error"].(map[string]any)
+	if !ok {
+		t.Fatalf("response missing 'error' object: %s", w.Body.String())
+	}
+	msg, _ := errBody["message"].(string)
+	for _, leak := range []string{"SQLSTATE", "constraint", "user_subscriptions_user_id_fkey", "ERROR:"} {
+		if strings.Contains(msg, leak) {
+			t.Fatalf("error message leaks raw driver detail %q: %s", leak, msg)
+		}
 	}
 }
 

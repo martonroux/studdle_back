@@ -308,7 +308,7 @@ func TestE2E_RegisterThroughTraining(t *testing.T) {
 	if code := cl.rawPost(t, "/user-test-jwt", map[string]string{}); code != http.StatusCreated {
 		t.Fatalf("user-test-jwt: want 201, got %d", code)
 	}
-	if code := cl.rawPost(t, "/ai/flashcards/prompt", map[string]string{}); code != http.StatusNotImplemented {
-		t.Fatalf("ai/flashcards/prompt: want 501, got %d", code)
+	if code := cl.rawPost(t, "/ai/flashcards/prompt", map[string]string{}); code != http.StatusBadRequest {
+		t.Fatalf("ai/flashcards/prompt: want 400, got %d", code)
 	}
 }

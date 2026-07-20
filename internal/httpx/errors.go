@@ -42,6 +42,7 @@ var sentinelStatus = []struct {
 	{myErrors.ErrStripe, http.StatusBadGateway},
 	{myErrors.ErrContentPolicy, http.StatusUnprocessableEntity},
 	{myErrors.ErrNotImplemented, http.StatusNotImplemented},
+	{myErrors.ErrRateLimited, http.StatusTooManyRequests},
 }
 
 // sentinelCodes maps each sentinel error to its stable string code.
@@ -68,6 +69,7 @@ var sentinelCodes = []struct {
 	{myErrors.ErrStripe, "stripe_error"},
 	{myErrors.ErrContentPolicy, "content_policy"},
 	{myErrors.ErrNotImplemented, "not_implemented"},
+	{myErrors.ErrRateLimited, "rate_limited"},
 }
 
 // WriteError writes a JSON error envelope with HTTP status mapped from the sentinel.

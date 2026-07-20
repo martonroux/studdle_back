@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 	"time"
 
 	"studbud/backend/internal/authctx"
@@ -46,6 +47,10 @@ func (h *AdminBillingHandler) Grant(w http.ResponseWriter, r *http.Request) {
 	}
 	if in.UserID <= 0 {
 		httpx.WriteError(w, &myErrors.AppError{Code: "validation", Field: "user_id", Wrapped: myErrors.ErrValidation})
+		return
+	}
+	if strings.TrimSpace(in.Reason) == "" {
+		httpx.WriteError(w, &myErrors.AppError{Code: "validation", Message: "reason is required", Field: "reason", Wrapped: myErrors.ErrValidation})
 		return
 	}
 	var expires *time.Time
