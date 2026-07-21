@@ -66,6 +66,16 @@ func run() error {
 			return nil
 		},
 	})
+	d.scheduler.Register(cron.Job{
+		Name:     "masterySnapshot",
+		Interval: 24 * time.Hour,
+		Run: func(ctx context.Context) error {
+			if err := d.subject.SnapshotMastery(ctx); err != nil {
+				log.Printf("mastery snapshot: %v", err)
+			}
+			return nil
+		},
+	})
 	d.scheduler.Start(ctx)
 	d.worker.Start(ctx)
 

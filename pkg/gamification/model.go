@@ -24,6 +24,7 @@ type TrainingSession struct {
 	ID         int64     `json:"id"`          // ID is the session primary key
 	UserID     int64     `json:"user_id"`     // UserID is the learner
 	SubjectID  int64     `json:"subject_id"`  // SubjectID is the subject trained
+	ChapterID  *int64    `json:"chapter_id"`  // ChapterID is the chapter trained, nil if cards spanned no single chapter
 	CardCount  int       `json:"card_count"`  // CardCount is the number of cards reviewed
 	DurationMs int       `json:"duration_ms"` // DurationMs is the total session duration
 	Score      int       `json:"score"`       // Score is an aggregate score
@@ -32,10 +33,11 @@ type TrainingSession struct {
 
 // RecordSessionInput is the payload to record a finished session.
 type RecordSessionInput struct {
-	SubjectID  int64 `json:"subject_id"`  // SubjectID is the subject being trained
-	CardCount  int   `json:"card_count"`  // CardCount is cards answered
-	DurationMs int   `json:"duration_ms"` // DurationMs is the wall time
-	Score      int   `json:"score"`       // Score is the aggregate score
+	SubjectID  int64  `json:"subject_id"`  // SubjectID is the subject being trained
+	ChapterID  *int64 `json:"chapter_id"`  // ChapterID is the chapter being trained, nil if cards spanned no single chapter
+	CardCount  int    `json:"card_count"`  // CardCount is cards answered
+	DurationMs int    `json:"duration_ms"` // DurationMs is the wall time
+	Score      int    `json:"score"`       // Score is the aggregate score
 }
 
 // RecordSessionResult bundles the mutated state returned to the caller.

@@ -326,6 +326,9 @@ Returned from `POST /upload-image`. Images are served publicly via `GET /images/
 |   | POST   | `/resend-verification`            | auth          |
 |   | GET    | `/subject-list`                   | auth          |
 |   | GET    | `/subject`                        | auth          |
+|   | GET    | `/subject-stats`                  | auth          |
+|   | GET    | `/subject-stats-history`          | auth          |
+|   | GET    | `/subject-stats-mastery-trend`    | auth          |
 |   | GET    | `/chapter-list`                   | auth          |
 |   | GET    | `/flashcard-list`                 | auth          |
 |   | GET    | `/flashcard`                      | auth          |
@@ -549,6 +552,49 @@ Password must be ≥ 8 characters. Email must contain `@`. Username and email mu
 `GET /subject?id=<id>` — Returns the subject if the caller has at least `viewer` access.
 
 **200 Response:** [`Subject`](#subject). **Errors:** 400, 401, 403, 404.
+
+---
+
+### Get subject history (auth)
+`GET /subject-stats-history?id=<id>` — Viewer-or-above. Bundles three `SubjectStatsView` widgets in one round trip: the caller's most recent 20 training sessions (newest first), an 8-week activity heatmap (zero-filled for days with no session, oldest first), and per-chapter card/mastery aggregation.
+
+**200 Response:**
+```json
+{
+  "sessions": [
+    {
+      "completedAt": "2026-07-20T18:04:00Z",
+      "chapterId": 12,
+      "chapterName": "Alkenes",
+      "cards": 8,
+      "durationMs": 240000,
+      "accuracy": 0.875
+    }
+  ],
+  "heatmap": [
+    { "day": "2026-05-26", "cards": 0 }
+  ],
+  "chapters": [
+    { "chapterId": 12, "chapterName": "Alkenes", "cards": 8, "minutesTrained": 4, "masteryPercent": 0.75 }
+  ]
+}
+```
+`chapterId`/`chapterName` on a session entry are `null` when the session predates the chapter-attribution write-path fix, or when the reviewed cards spanned no single chapter. `chapters` includes every chapter that has at least one flashcard, even if the caller has never recorded a session against it (`cards: 0, minutesTrained: 0`); `masteryPercent` is live (derived from `flashcards.last_result`), independent of session history.
+
+**Errors:** 400, 401, 403.
+
+---
+
+### Get subject mastery trend (auth)
+`GET /subject-stats-mastery-trend?id=<id>&period=7d|30d|all` — Viewer-or-above. Returns the subject's mastery-percent trend, one point per day, sourced from the `subject_mastery_daily` snapshot table populated by the daily `masterySnapshot` cron job. `period` must be exactly `7d`, `30d`, or `all` (since the subject's `created_at`); anything else is `400 invalid_input`.
+
+**200 Response:**
+```json
+{ "period": "30d", "series": [0.41, 0.41, 0.46, 0.52], "delta": 0.11 }
+```
+`series` is oldest-first; gaps in the snapshot history are forward-filled from the last known value, and days before the first available snapshot are omitted rather than backfilled — so `series` can have fewer points than the requested period implies, especially in the days right after deploy. `delta` is `series[last] - series[0]`, and is `0` when `series` has fewer than 2 points.
+
+**Errors:** 400 (`invalid_input` for a missing/unrecognized `period`), 401, 403.
 
 ---
 

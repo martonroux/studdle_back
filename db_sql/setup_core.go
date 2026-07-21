@@ -203,6 +203,28 @@ CREATE TABLE IF NOT EXISTS training_sessions (
     duration_ms   BIGINT NOT NULL DEFAULT 0,
     completed_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+-- score was never in the original CREATE TABLE; the Go layer echoed it back
+-- from the request without persisting it. STU-16's session-history endpoint
+-- needs it durable to compute per-session accuracy (score/(2*cards)).
+ALTER TABLE training_sessions ADD COLUMN IF NOT EXISTS score INT NOT NULL DEFAULT 0;
+
+-- subject_mastery_daily is a once-per-day snapshot of each subject's mastery
+-- composition, populated by the masterySnapshot cron job. It is the only
+-- source of historical mastery data (flashcards.last_result only holds the
+-- current value, overwritten on every review) — see STU-16 design doc.
+CREATE TABLE IF NOT EXISTS subject_mastery_daily (
+    user_id         BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    subject_id      BIGINT NOT NULL REFERENCES subjects(id) ON DELETE CASCADE,
+    day             DATE NOT NULL,
+    total_cards     INT NOT NULL,
+    good_count      INT NOT NULL,
+    ok_count        INT NOT NULL,
+    bad_count       INT NOT NULL,
+    new_count       INT NOT NULL,
+    mastery_percent NUMERIC(6,4) NOT NULL,
+    PRIMARY KEY (user_id, subject_id, day)
+);
+CREATE INDEX IF NOT EXISTS idx_mastery_daily_lookup ON subject_mastery_daily(subject_id, day);
 
 CREATE TABLE IF NOT EXISTS user_session_bests (
     user_id       BIGINT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,

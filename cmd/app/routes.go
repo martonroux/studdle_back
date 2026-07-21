@@ -75,6 +75,8 @@ func registerAuthReadRoutes(mux *http.ServeMux, d *deps, auth func(http.HandlerF
 	mux.Handle("GET /subject-list", auth(subjH.List))
 	mux.Handle("GET /subject", auth(subjH.Get))
 	mux.Handle("GET /subject-stats", auth(subjH.Stats))
+	mux.Handle("GET /subject-stats-history", auth(subjH.History))
+	mux.Handle("GET /subject-stats-mastery-trend", auth(subjH.MasteryTrend))
 	mux.Handle("GET /chapter-list", auth(chapH.List))
 	mux.Handle("GET /chapter-stats", auth(chapH.Stats))
 	mux.Handle("GET /flashcard-list", auth(fcH.ListBySubject))
