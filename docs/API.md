@@ -1,4 +1,4 @@
-# StudBud API Documentation
+# Studdle API Documentation
 
 **Base URL:** `http://localhost:8080` (default; set via `PORT` env var)
 **Version:** Skeleton 1.0 (matches `cmd/app/routes.go`)

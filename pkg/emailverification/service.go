@@ -46,7 +46,7 @@ func (s *Service) Issue(ctx context.Context, uid int64, recipient string) error 
 	}
 	link := s.frontendURL + "/verify-email?token=" + tok
 	return s.mailer.Send(recipient, "Verify your email",
-		"Click to verify your StudBud account: "+link)
+		"Click to verify your Studdle account: "+link)
 }
 
 // Verify consumes a token and flips users.email_verified.

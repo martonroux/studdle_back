@@ -1,8 +1,8 @@
 openapi: 3.1.0
 info:
-  title: StudBud Backend API
+  title: Studdle Backend API
   description: |
-    HTTP API for the StudBud study-aid backend.
+    HTTP API for the Studdle study-aid backend.
 
     **Scope:** only implemented routes are documented. Stub routes (quiz, plan, duel) are omitted until their specs ship.
 
