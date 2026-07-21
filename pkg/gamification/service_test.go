@@ -76,6 +76,74 @@ func TestStreakResetsAfterGap(t *testing.T) {
 	}
 }
 
+// TestRecordSessionPerChapterSplitPreservesFullDuration verifies that recording two
+// chapter-scoped sessions (the shape the frontend now sends after splitting a
+// multi-chapter study run by (subject_id, chapter_id) instead of subject_id alone)
+// produces two distinct training_sessions rows, each carrying its own chapter_id and
+// total_cards. Duration is NOT apportioned between the split rows — each one gets the
+// full duration passed to RecordSession. That is an accepted pre-existing
+// simplification (the multi-subject split already behaves the same way today), not a
+// new limitation introduced by chapter attribution.
+func TestRecordSessionPerChapterSplitPreservesFullDuration(t *testing.T) {
+	ctx := context.Background()
+	db := testutil.OpenTestDB(t)
+	testutil.Reset(t, db)
+	svc := gamification.NewService(db, access.NewService(db))
+
+	user := testutil.NewVerifiedUser(t, db)
+	sub := testutil.NewSubject(t, db, user.ID)
+	ch1 := testutil.NewChapter(t, db, sub.ID, "Alkenes")
+	ch2 := testutil.NewChapter(t, db, sub.ID, "Alkynes")
+
+	if _, err := svc.RecordSession(ctx, user.ID, gamification.RecordSessionInput{
+		SubjectID: sub.ID, ChapterID: &ch1, CardCount: 3, DurationMs: 90000, Score: 6,
+	}); err != nil {
+		t.Fatalf("record chapter 1 session: %v", err)
+	}
+	if _, err := svc.RecordSession(ctx, user.ID, gamification.RecordSessionInput{
+		SubjectID: sub.ID, ChapterID: &ch2, CardCount: 5, DurationMs: 150000, Score: 8,
+	}); err != nil {
+		t.Fatalf("record chapter 2 session: %v", err)
+	}
+
+	rows, err := db.Query(ctx, `
+		SELECT chapter_id, total_cards, duration_ms
+		FROM training_sessions
+		WHERE subject_id = $1
+		ORDER BY chapter_id
+	`, sub.ID)
+	if err != nil {
+		t.Fatalf("query sessions: %v", err)
+	}
+	defer rows.Close()
+
+	type row struct {
+		ChapterID  int64
+		TotalCards int
+		DurationMs int64
+	}
+	var got []row
+	for rows.Next() {
+		var r row
+		if err := rows.Scan(&r.ChapterID, &r.TotalCards, &r.DurationMs); err != nil {
+			t.Fatalf("scan session row: %v", err)
+		}
+		got = append(got, r)
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("rows err: %v", err)
+	}
+	if len(got) != 2 {
+		t.Fatalf("expected 2 training_sessions rows, got %d: %+v", len(got), got)
+	}
+	if got[0].ChapterID != ch1 || got[0].TotalCards != 3 || got[0].DurationMs != 90000 {
+		t.Fatalf("unexpected chapter 1 row: %+v", got[0])
+	}
+	if got[1].ChapterID != ch2 || got[1].TotalCards != 5 || got[1].DurationMs != 150000 {
+		t.Fatalf("unexpected chapter 2 row: %+v", got[1])
+	}
+}
+
 // TestListAchievementsShowsFullCatalog verifies a brand new user sees the entire catalog
 // even when nothing has been unlocked.
 func TestListAchievementsShowsFullCatalog(t *testing.T) {

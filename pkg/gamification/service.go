@@ -82,20 +82,19 @@ func (s *Service) assertSubjectAccess(ctx context.Context, uid, subjectID int64)
 }
 
 // insertSession persists one training_sessions row and returns it populated.
-// Score is echoed from the input because the table has no score column.
 func (s *Service) insertSession(ctx context.Context, uid int64, in RecordSessionInput) (TrainingSession, error) {
 	var sess TrainingSession
 	err := s.db.QueryRow(ctx, `
-		INSERT INTO training_sessions (user_id, subject_id, total_cards, duration_ms)
-		VALUES ($1,$2,$3,$4)
-		RETURNING id, user_id, subject_id, total_cards, duration_ms, completed_at
-	`, uid, in.SubjectID, in.CardCount, in.DurationMs).Scan(
-		&sess.ID, &sess.UserID, &sess.SubjectID, &sess.CardCount, &sess.DurationMs, &sess.CreatedAt,
+		INSERT INTO training_sessions (user_id, subject_id, chapter_id, total_cards, duration_ms, score)
+		VALUES ($1,$2,$3,$4,$5,$6)
+		RETURNING id, user_id, subject_id, chapter_id, total_cards, duration_ms, score, completed_at
+	`, uid, in.SubjectID, in.ChapterID, in.CardCount, in.DurationMs, in.Score).Scan(
+		&sess.ID, &sess.UserID, &sess.SubjectID, &sess.ChapterID, &sess.CardCount, &sess.DurationMs,
+		&sess.Score, &sess.CreatedAt,
 	)
 	if err != nil {
 		return TrainingSession{}, fmt.Errorf("insert training session:\n%w", err)
 	}
-	sess.Score = in.Score
 	return sess, nil
 }
 

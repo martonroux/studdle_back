@@ -78,6 +78,39 @@ func (h *SubjectHandler) Stats(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, out)
 }
 
+// History handles GET /subject-stats-history?id=...
+func (h *SubjectHandler) History(w http.ResponseWriter, r *http.Request) {
+	uid := authctx.UID(r.Context())
+	id, err := httpx.QueryInt64(r, "id")
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	out, err := h.svc.History(r.Context(), uid, id)
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, out)
+}
+
+// MasteryTrend handles GET /subject-stats-mastery-trend?id=...&period=7d|30d|all
+func (h *SubjectHandler) MasteryTrend(w http.ResponseWriter, r *http.Request) {
+	uid := authctx.UID(r.Context())
+	id, err := httpx.QueryInt64(r, "id")
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	period := r.URL.Query().Get("period")
+	out, err := h.svc.MasteryTrend(r.Context(), uid, id, period)
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, out)
+}
+
 // Update handles POST /subject-update?id=...
 func (h *SubjectHandler) Update(w http.ResponseWriter, r *http.Request) {
 	uid := authctx.UID(r.Context())
