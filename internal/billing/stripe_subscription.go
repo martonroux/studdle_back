@@ -2,6 +2,7 @@ package billing
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -55,8 +56,12 @@ func projectSubscription(s *stripe.Subscription) *Subscription {
 		sub.PriceID = s.Items.Data[0].Price.ID
 	}
 
-	if s.CurrentPeriodEnd != 0 {
-		t := time.Unix(s.CurrentPeriodEnd, 0)
+	currentPeriodEnd := s.CurrentPeriodEnd
+	if currentPeriodEnd == 0 {
+		currentPeriodEnd = itemLevelCurrentPeriodEnd(s)
+	}
+	if currentPeriodEnd != 0 {
+		t := time.Unix(currentPeriodEnd, 0)
 		sub.CurrentPeriodEnd = &t
 	}
 
@@ -71,4 +76,32 @@ func projectSubscription(s *stripe.Subscription) *Subscription {
 	}
 
 	return sub
+}
+
+// itemLevelCurrentPeriodEnd recovers current_period_end from the first
+// subscription item when Stripe returns it there instead of on the
+// top-level subscription object. Some account billing configurations do
+// this, and stripe-go v76's typed SubscriptionItem has no field for it, so
+// this re-parses the raw API response body stripe-go stashes on
+// LastResponse. Returns 0 (absent) if the raw body is unavailable or the
+// field isn't present at either level.
+func itemLevelCurrentPeriodEnd(s *stripe.Subscription) int64 {
+	if s.LastResponse == nil || len(s.LastResponse.RawJSON) == 0 {
+		return 0
+	}
+
+	var raw struct {
+		Items struct {
+			Data []struct {
+				CurrentPeriodEnd int64 `json:"current_period_end"`
+			} `json:"data"`
+		} `json:"items"`
+	}
+	if err := json.Unmarshal(s.LastResponse.RawJSON, &raw); err != nil {
+		return 0
+	}
+	if len(raw.Items.Data) == 0 {
+		return 0
+	}
+	return raw.Items.Data[0].CurrentPeriodEnd
 }
