@@ -98,5 +98,91 @@ func TestGenerate_EmptyPool_Rejected(t *testing.T) {
 	}
 }
 
+func TestGenerateStream_HappyPath_EmitsItemProgressThenDone(t *testing.T) {
+	pool := testutil.OpenTestDB(t)
+	testutil.Reset(t, pool)
+	u := testutil.NewVerifiedUser(t, pool)
+	testutil.GiveAIAccess(t, pool, u.ID)
+	sub := testutil.NewSubjectNamed(t, pool, u.ID, "Bio", "private")
+	c1 := testutil.NewChapter(t, pool, sub.ID, "C1")
+	fc1 := testutil.NewFlashcard(t, pool, sub.ID, c1, "What is X?", "Mitochondrion")
+
+	item := func(stem string) string {
+		return `{"questionType":"multi_choice","stem":"` + stem + `","options":["A","B","C","D"],"correctIndex":2,"referencedFcIds":[` + itoa(fc1) + `]}`
+	}
+	fake := &testutil.FakeAIClient{
+		Chunks: []aiProvider.Chunk{
+			{Text: `{"items":[` +
+				item("Q1") + `,` +
+				item("Q2") + `,` +
+				item("Q3") + `,` +
+				item("Q4") + `,` +
+				item("Q5") + `]}`},
+			{Done: true},
+		},
+	}
+	ai := aipipeline.NewService(pool, fake, access.NewService(pool),
+		aipipeline.QuotaLimits{QuizCalls: 5}, "claude-test")
+	svc := quiz.NewService(pool, ai)
+
+	ch := svc.GenerateStream(context.Background(), quiz.GenerateRequest{
+		UserID: u.ID, SubjectID: sub.ID, Kind: quiz.KindSpecific,
+		Size: 5, Types: []quiz.QuestionType{quiz.QTypeMultiChoice},
+		CardFilter: quiz.FilterAll,
+	})
+
+	var events []quiz.GenerateProgress
+	for p := range ch {
+		events = append(events, p)
+	}
+
+	if len(events) != 6 {
+		t.Fatalf("got %d events, want 6 (5 items + done): %+v", len(events), events)
+	}
+	for i, want := range []int{1, 2, 3, 4, 5} {
+		if events[i].Kind != quiz.GenerateProgressItem || events[i].Index != want || events[i].Size != 5 {
+			t.Fatalf("event[%d] = %+v, want item index=%d size=5", i, events[i], want)
+		}
+	}
+	last := events[5]
+	if last.Kind != quiz.GenerateProgressDone {
+		t.Fatalf("last event kind = %q, want done", last.Kind)
+	}
+	if last.Result == nil || last.Result.QuestionCount != 5 || last.Result.QuizID == 0 {
+		t.Fatalf("done result = %+v", last.Result)
+	}
+}
+
+func TestGenerateStream_EmptyPool_EmitsErrorEvent(t *testing.T) {
+	pool := testutil.OpenTestDB(t)
+	testutil.Reset(t, pool)
+	u := testutil.NewVerifiedUser(t, pool)
+	testutil.GiveAIAccess(t, pool, u.ID)
+	sub := testutil.NewSubjectNamed(t, pool, u.ID, "Bio", "private")
+	// No flashcards seeded — pool resolves to zero cards.
+
+	svc := quiz.NewService(pool, nil) // AI must never be reached
+	ch := svc.GenerateStream(context.Background(), quiz.GenerateRequest{
+		UserID: u.ID, SubjectID: sub.ID, Kind: quiz.KindSpecific,
+		Size: 5, Types: []quiz.QuestionType{quiz.QTypeMultiChoice},
+		CardFilter: quiz.FilterAll,
+	})
+
+	var events []quiz.GenerateProgress
+	for p := range ch {
+		events = append(events, p)
+	}
+
+	if len(events) != 1 {
+		t.Fatalf("got %d events, want 1 (error): %+v", len(events), events)
+	}
+	if events[0].Kind != quiz.GenerateProgressError {
+		t.Fatalf("event kind = %q, want error", events[0].Kind)
+	}
+	if !errors.Is(events[0].Err, myErrors.ErrEmptyCardPool) {
+		t.Fatalf("err = %v, want ErrEmptyCardPool", events[0].Err)
+	}
+}
+
 // itoa is a tiny helper used by the JSON fixture above.
 func itoa(i int64) string { return fmt.Sprintf("%d", i) }

@@ -14,9 +14,57 @@ import (
 // allowedSizes is the v1 white-list for quiz size (Spec D §4 Setup).
 var allowedSizes = map[int]bool{5: true, 10: true, 15: true, 20: true}
 
+// GenerateProgressKind tags a streamed GenerateProgress event.
+type GenerateProgressKind string
+
+const (
+	// GenerateProgressItem marks one validated question; Index counts questions
+	// validated so far (1-based) out of the requested Size.
+	GenerateProgressItem GenerateProgressKind = "item"
+	// GenerateProgressDone marks successful completion; Result is set.
+	GenerateProgressDone GenerateProgressKind = "done"
+	// GenerateProgressError marks a terminal failure; Err is set.
+	GenerateProgressError GenerateProgressKind = "error"
+)
+
+// GenerateProgress is one streamed event from GenerateStream.
+type GenerateProgress struct {
+	Kind   GenerateProgressKind
+	Index  int             // 1-based count of validated questions so far (Kind == item)
+	Size   int             // requested quiz size (Kind == item)
+	Result *GenerateResult // set when Kind == done
+	Err    error           // set when Kind == error
+}
+
 // Generate produces a quiz from a flashcard pool + AI call + persistence.
 // Returns GenerateResult with the new quiz id and validated question count.
 func (s *Service) Generate(ctx context.Context, req GenerateRequest) (GenerateResult, error) {
+	return s.generate(ctx, req, nil)
+}
+
+// GenerateStream behaves like Generate but also emits per-question progress on
+// the returned channel as the AI stream validates each item — the same
+// AIChunk{Kind: ChunkItem} signal flashcard generation already streams to
+// clients (see STU-44). The channel receives exactly one terminal
+// GenerateProgressDone or GenerateProgressError event and is then closed.
+func (s *Service) GenerateStream(ctx context.Context, req GenerateRequest) <-chan GenerateProgress {
+	out := make(chan GenerateProgress, 16)
+	go func() {
+		defer close(out)
+		res, err := s.generate(ctx, req, out)
+		if err != nil {
+			emitProgress(ctx, out, GenerateProgress{Kind: GenerateProgressError, Err: err})
+			return
+		}
+		emitProgress(ctx, out, GenerateProgress{Kind: GenerateProgressDone, Result: &res})
+	}()
+	return out
+}
+
+// generate is the shared implementation behind Generate and GenerateStream.
+// progress may be nil; when set, one GenerateProgressItem event is sent per
+// validated question as the AI stream is drained.
+func (s *Service) generate(ctx context.Context, req GenerateRequest, progress chan<- GenerateProgress) (GenerateResult, error) {
 	if err := validateRequest(req); err != nil {
 		return GenerateResult{}, err
 	}
@@ -50,7 +98,7 @@ func (s *Service) Generate(ctx context.Context, req GenerateRequest) (GenerateRe
 	if err != nil {
 		return GenerateResult{}, err
 	}
-	questions, err := drainQuestions(out.Chunks, req.Size)
+	questions, err := drainQuestions(ctx, out.Chunks, req.Size, progress)
 	if err != nil {
 		return GenerateResult{}, err
 	}
@@ -73,6 +121,15 @@ func (s *Service) Generate(ctx context.Context, req GenerateRequest) (GenerateRe
 		return GenerateResult{}, err
 	}
 	return GenerateResult{QuizID: quizID, QuestionCount: len(questions), Kind: req.Kind}, nil
+}
+
+// emitProgress sends a terminal progress event, aborting instead of blocking
+// forever if ctx is canceled and nobody is left reading (e.g. client gone).
+func emitProgress(ctx context.Context, out chan<- GenerateProgress, p GenerateProgress) {
+	select {
+	case out <- p:
+	case <-ctx.Done():
+	}
 }
 
 // validateRequest returns ErrValidation if the request is malformed.
