@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"studbud/backend/internal/aiProvider"
-	"studbud/backend/pkg/aipipeline"
-	"studbud/backend/testutil"
+	"studdle/backend/internal/aiProvider"
+	"studdle/backend/pkg/aipipeline"
+	"studdle/backend/testutil"
 )
 
 // fakeProv emits a single fixed chunk on each Stream call.

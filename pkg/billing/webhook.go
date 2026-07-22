@@ -7,7 +7,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgconn"
 
-	billingadapter "studbud/backend/internal/billing"
+	billingadapter "studdle/backend/internal/billing"
 )
 
 // ErrLivemodeMismatch is returned when an incoming event's livemode flag

@@ -4,9 +4,9 @@ import (
 	"context"
 	"testing"
 
-	"studbud/backend/internal/billing"
-	pkgbilling "studbud/backend/pkg/billing"
-	"studbud/backend/testutil"
+	"studdle/backend/internal/billing"
+	pkgbilling "studdle/backend/pkg/billing"
+	"studdle/backend/testutil"
 )
 
 func TestGrantComp_InsertsActiveCompRow(t *testing.T) {

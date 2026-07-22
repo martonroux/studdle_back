@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"studbud/backend/internal/aiProvider"
-	"studbud/backend/internal/myErrors"
+	"studdle/backend/internal/aiProvider"
+	"studdle/backend/internal/myErrors"
 )
 
 // CheckInput describes one AI-check request.

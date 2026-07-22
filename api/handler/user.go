@@ -3,10 +3,10 @@ package handler
 import (
 	"net/http"
 
-	"studbud/backend/internal/authctx"
-	"studbud/backend/internal/httpx"
-	"studbud/backend/pkg/emailverification"
-	"studbud/backend/pkg/user"
+	"studdle/backend/internal/authctx"
+	"studdle/backend/internal/httpx"
+	"studdle/backend/pkg/emailverification"
+	"studdle/backend/pkg/user"
 )
 
 // UserHandler wires HTTP routes for user-scope operations.

@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"studbud/backend/testutil"
+	"studdle/backend/testutil"
 )
 
 func TestIssueSendsEmail(t *testing.T) {

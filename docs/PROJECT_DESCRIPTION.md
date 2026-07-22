@@ -1,4 +1,4 @@
-# StudBud
+# Studdle
 
 ## Project Overview
 

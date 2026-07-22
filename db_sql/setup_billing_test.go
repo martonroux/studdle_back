@@ -6,7 +6,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"studbud/backend/testutil"
+	"studdle/backend/testutil"
 )
 
 // TestBillingSchema_MatchesSpec asserts the post-migration shape:

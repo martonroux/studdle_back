@@ -11,8 +11,8 @@ import (
 	"strconv"
 	"testing"
 
-	"studbud/backend/internal/aiProvider"
-	"studbud/backend/testutil"
+	"studdle/backend/internal/aiProvider"
+	"studdle/backend/testutil"
 )
 
 func newPDFFormReader(t *testing.T, subjectID int64, mode string, pdfBytes []byte) (*bytes.Buffer, string) {

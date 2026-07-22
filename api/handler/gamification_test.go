@@ -11,12 +11,12 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"studbud/backend/api/handler"
-	"studbud/backend/internal/http/middleware"
-	jwtsigner "studbud/backend/internal/jwt"
-	"studbud/backend/pkg/access"
-	"studbud/backend/pkg/gamification"
-	"studbud/backend/testutil"
+	"studdle/backend/api/handler"
+	"studdle/backend/internal/http/middleware"
+	jwtsigner "studdle/backend/internal/jwt"
+	"studdle/backend/pkg/access"
+	"studdle/backend/pkg/gamification"
+	"studdle/backend/testutil"
 )
 
 // TestRecordSession_CrossUserSubjectForbidden is a regression test for GAM-1: a caller with

@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"studbud/backend/internal/aiProvider"
-	"studbud/backend/internal/myErrors"
+	"studdle/backend/internal/aiProvider"
+	"studdle/backend/internal/myErrors"
 )
 
 // RunStructuredGeneration validates entitlement + quota + concurrency, inserts an

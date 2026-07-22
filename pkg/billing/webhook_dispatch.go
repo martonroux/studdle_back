@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strconv"
 
-	billingadapter "studbud/backend/internal/billing"
+	billingadapter "studdle/backend/internal/billing"
 )
 
 // dispatch routes the event by Type. Unknown events are no-ops (the audit

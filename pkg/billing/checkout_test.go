@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	pkgbilling "studbud/backend/pkg/billing"
-	"studbud/backend/testutil"
+	pkgbilling "studdle/backend/pkg/billing"
+	"studdle/backend/testutil"
 )
 
 func TestCreateCheckoutSession_HappyPath(t *testing.T) {

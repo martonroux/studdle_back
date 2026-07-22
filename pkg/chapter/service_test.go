@@ -4,9 +4,9 @@ import (
 	"context"
 	"testing"
 
-	"studbud/backend/pkg/access"
-	"studbud/backend/pkg/chapter"
-	"studbud/backend/testutil"
+	"studdle/backend/pkg/access"
+	"studdle/backend/pkg/chapter"
+	"studdle/backend/testutil"
 )
 
 func TestChapterCRUD(t *testing.T) {

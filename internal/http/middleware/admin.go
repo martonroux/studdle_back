@@ -3,9 +3,9 @@ package middleware
 import (
 	"net/http"
 
-	"studbud/backend/internal/authctx"
-	"studbud/backend/internal/httpx"
-	"studbud/backend/internal/myErrors"
+	"studdle/backend/internal/authctx"
+	"studdle/backend/internal/httpx"
+	"studdle/backend/internal/myErrors"
 )
 
 // RequireAdmin rejects requests whose caller is not an admin.

@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"studbud/backend/testutil"
+	"studdle/backend/testutil"
 )
 
 func TestHasAIAccessFalseByDefault(t *testing.T) {

@@ -11,9 +11,9 @@ import (
 	"syscall"
 	"time"
 
-	"studbud/backend/db_sql"
-	"studbud/backend/internal/config"
-	"studbud/backend/internal/cron"
+	"studdle/backend/db_sql"
+	"studdle/backend/internal/config"
+	"studdle/backend/internal/cron"
 )
 
 // main is the binary entrypoint.

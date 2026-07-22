@@ -8,13 +8,13 @@ import (
 	"testing"
 	"time"
 
-	"studbud/backend/api/handler"
-	internalbilling "studbud/backend/internal/billing"
-	"studbud/backend/internal/http/middleware"
-	jwtsigner "studbud/backend/internal/jwt"
-	pkgbilling "studbud/backend/pkg/billing"
-	pkguser "studbud/backend/pkg/user"
-	"studbud/backend/testutil"
+	"studdle/backend/api/handler"
+	internalbilling "studdle/backend/internal/billing"
+	"studdle/backend/internal/http/middleware"
+	jwtsigner "studdle/backend/internal/jwt"
+	pkgbilling "studdle/backend/pkg/billing"
+	pkguser "studdle/backend/pkg/user"
+	"studdle/backend/testutil"
 )
 
 func TestGetSubscription_NoRow_ReturnsStatusNone(t *testing.T) {

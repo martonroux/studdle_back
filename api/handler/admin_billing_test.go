@@ -12,13 +12,13 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"studbud/backend/api/handler"
-	internalbilling "studbud/backend/internal/billing"
-	"studbud/backend/internal/http/middleware"
-	jwtsigner "studbud/backend/internal/jwt"
-	"studbud/backend/pkg/access"
-	pkgbilling "studbud/backend/pkg/billing"
-	"studbud/backend/testutil"
+	"studdle/backend/api/handler"
+	internalbilling "studdle/backend/internal/billing"
+	"studdle/backend/internal/http/middleware"
+	jwtsigner "studdle/backend/internal/jwt"
+	"studdle/backend/pkg/access"
+	pkgbilling "studdle/backend/pkg/billing"
+	"studdle/backend/testutil"
 )
 
 func TestAdminBillingGrant_Returns200AndCompsUser(t *testing.T) {

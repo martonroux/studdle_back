@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"studbud/backend/internal/aiProvider"
+	"studdle/backend/internal/aiProvider"
 )
 
 func TestPDFToImages_ReturnsOneJPEGPerPage(t *testing.T) {

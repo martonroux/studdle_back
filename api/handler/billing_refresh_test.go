@@ -7,12 +7,12 @@ import (
 	"testing"
 	"time"
 
-	"studbud/backend/api/handler"
-	"studbud/backend/internal/http/middleware"
-	jwtsigner "studbud/backend/internal/jwt"
-	pkgbilling "studbud/backend/pkg/billing"
-	pkguser "studbud/backend/pkg/user"
-	"studbud/backend/testutil"
+	"studdle/backend/api/handler"
+	"studdle/backend/internal/http/middleware"
+	jwtsigner "studdle/backend/internal/jwt"
+	pkgbilling "studdle/backend/pkg/billing"
+	pkguser "studdle/backend/pkg/user"
+	"studdle/backend/testutil"
 )
 
 func TestBillingRefresh_Returns200(t *testing.T) {

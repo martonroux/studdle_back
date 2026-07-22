@@ -11,8 +11,8 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"studbud/backend/internal/myErrors"
-	"studbud/backend/pkg/access"
+	"studdle/backend/internal/myErrors"
+	"studdle/backend/pkg/access"
 )
 
 // Service owns collaborator and invite-link persistence for subjects.

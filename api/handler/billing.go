@@ -14,12 +14,12 @@ import (
 
 	"golang.org/x/time/rate"
 
-	"studbud/backend/internal/authctx"
-	billingadapter "studbud/backend/internal/billing"
-	"studbud/backend/internal/httpx"
-	"studbud/backend/internal/myErrors"
-	"studbud/backend/pkg/billing"
-	"studbud/backend/pkg/user"
+	"studdle/backend/internal/authctx"
+	billingadapter "studdle/backend/internal/billing"
+	"studdle/backend/internal/httpx"
+	"studdle/backend/internal/myErrors"
+	"studdle/backend/pkg/billing"
+	"studdle/backend/pkg/user"
 )
 
 // BillingHandler exposes Spec C billing endpoints.

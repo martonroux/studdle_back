@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"studbud/backend/internal/billing"
-	pkgbilling "studbud/backend/pkg/billing"
-	"studbud/backend/testutil"
+	"studdle/backend/internal/billing"
+	pkgbilling "studdle/backend/pkg/billing"
+	"studdle/backend/testutil"
 )
 
 func TestHandleWebhook_LivemodeMismatch(t *testing.T) {

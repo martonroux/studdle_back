@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"net/http"
 
-	"studbud/backend/internal/httpx"
-	"studbud/backend/internal/myErrors"
-	"studbud/backend/pkg/access"
-	"studbud/backend/pkg/billing"
+	"studdle/backend/internal/httpx"
+	"studdle/backend/internal/myErrors"
+	"studdle/backend/pkg/access"
+	"studdle/backend/pkg/billing"
 )
 
 // AdminAIHandler exposes admin-only routes for AI entitlement management.

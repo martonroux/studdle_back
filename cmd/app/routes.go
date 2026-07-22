@@ -3,8 +3,8 @@ package main
 import (
 	"net/http"
 
-	"studbud/backend/api/handler"
-	"studbud/backend/internal/http/middleware"
+	"studdle/backend/api/handler"
+	"studdle/backend/internal/http/middleware"
 )
 
 // buildRouter constructs the ServeMux and wraps it with the global middleware stack.

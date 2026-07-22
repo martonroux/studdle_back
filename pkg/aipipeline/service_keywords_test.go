@@ -5,9 +5,9 @@ import (
 	"strings"
 	"testing"
 
-	"studbud/backend/internal/aiProvider"
-	"studbud/backend/pkg/aipipeline"
-	"studbud/backend/testutil"
+	"studdle/backend/internal/aiProvider"
+	"studdle/backend/pkg/aipipeline"
+	"studdle/backend/testutil"
 )
 
 // newKeywordSvc returns a Service wired only with a fake provider and model.

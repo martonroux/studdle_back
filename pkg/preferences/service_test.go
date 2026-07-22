@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"studbud/backend/pkg/preferences"
-	"studbud/backend/testutil"
+	"studdle/backend/pkg/preferences"
+	"studdle/backend/testutil"
 )
 
 // TestPreferencesGetCreatesDefault verifies Get auto-creates a row with AIPlanningEnabled=true.

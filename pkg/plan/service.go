@@ -3,10 +3,10 @@ package plan
 import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"studbud/backend/pkg/access"
-	"studbud/backend/pkg/aipipeline"
-	"studbud/backend/pkg/exam"
-	"studbud/backend/pkg/image"
+	"studdle/backend/pkg/access"
+	"studdle/backend/pkg/aipipeline"
+	"studdle/backend/pkg/exam"
+	"studdle/backend/pkg/image"
 )
 
 // Service is the revision-plan facade. It composes the AI pipeline, the exam

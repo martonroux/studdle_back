@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	billingadapter "studbud/backend/internal/billing"
+	billingadapter "studdle/backend/internal/billing"
 )
 
 // ErrAlreadySubscribed is returned when a user with an active/trialing row tries to check out again.

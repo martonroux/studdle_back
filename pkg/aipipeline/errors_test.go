@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"testing"
 
-	"studbud/backend/internal/myErrors"
+	"studdle/backend/internal/myErrors"
 )
 
 func TestClassifyProviderError_OverflowWithImagesMapsToImageModeUnavailable(t *testing.T) {

@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"studbud/backend/internal/myErrors"
+	"studdle/backend/internal/myErrors"
 )
 
 // GetPlan returns the stored plan for examID along with today's bucket and drift.

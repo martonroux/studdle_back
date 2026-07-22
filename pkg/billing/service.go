@@ -6,7 +6,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	billingadapter "studbud/backend/internal/billing"
+	billingadapter "studdle/backend/internal/billing"
 )
 
 // Service wraps the billing provider (Stripe in prod, fake in tests).

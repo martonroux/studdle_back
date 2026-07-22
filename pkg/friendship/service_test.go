@@ -5,9 +5,9 @@ import (
 	"errors"
 	"testing"
 
-	"studbud/backend/internal/myErrors"
-	"studbud/backend/pkg/friendship"
-	"studbud/backend/testutil"
+	"studdle/backend/internal/myErrors"
+	"studdle/backend/pkg/friendship"
+	"studdle/backend/testutil"
 )
 
 // TestFriendshipFlow exercises the happy path: request, receiver accepts, list, unfriend.

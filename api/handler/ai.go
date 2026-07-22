@@ -7,10 +7,10 @@ import (
 	"fmt"
 	"net/http"
 
-	"studbud/backend/internal/authctx"
-	"studbud/backend/internal/httpx"
-	"studbud/backend/internal/myErrors"
-	"studbud/backend/pkg/aipipeline"
+	"studdle/backend/internal/authctx"
+	"studdle/backend/internal/httpx"
+	"studdle/backend/internal/myErrors"
+	"studdle/backend/pkg/aipipeline"
 )
 
 // AIHandler exposes AI pipeline endpoints.

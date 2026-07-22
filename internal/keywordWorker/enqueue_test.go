@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"studbud/backend/testutil"
+	"studdle/backend/testutil"
 )
 
 func TestMaterialChange_Identity(t *testing.T) {

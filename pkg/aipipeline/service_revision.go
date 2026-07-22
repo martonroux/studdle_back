@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"studbud/backend/internal/aiProvider"
+	"studdle/backend/internal/aiProvider"
 )
 
 // RankInput is the input to the cross-subject ranker.

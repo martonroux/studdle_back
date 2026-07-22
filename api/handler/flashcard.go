@@ -3,9 +3,9 @@ package handler
 import (
 	"net/http"
 
-	"studbud/backend/internal/authctx"
-	"studbud/backend/internal/httpx"
-	"studbud/backend/pkg/flashcard"
+	"studdle/backend/internal/authctx"
+	"studdle/backend/internal/httpx"
+	"studdle/backend/pkg/flashcard"
 )
 
 // FlashcardHandler exposes flashcard CRUD + review endpoints.

@@ -3,11 +3,11 @@ package handler
 import (
 	"net/http"
 
-	"studbud/backend/internal/authctx"
-	"studbud/backend/internal/httpx"
-	"studbud/backend/internal/myErrors"
-	"studbud/backend/pkg/emailverification"
-	"studbud/backend/pkg/user"
+	"studdle/backend/internal/authctx"
+	"studdle/backend/internal/httpx"
+	"studdle/backend/internal/myErrors"
+	"studdle/backend/pkg/emailverification"
+	"studdle/backend/pkg/user"
 )
 
 // EmailVerificationHandler handles verify + resend routes.

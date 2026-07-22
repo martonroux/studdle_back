@@ -5,7 +5,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"studbud/backend/internal/myErrors"
+	"studdle/backend/internal/myErrors"
 )
 
 // Service is the quiz facade. Spec D will replace this.

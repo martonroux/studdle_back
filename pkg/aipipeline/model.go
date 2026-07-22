@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"time"
 
-	"studbud/backend/internal/aiProvider"
+	"studdle/backend/internal/aiProvider"
 )
 
 // FeatureKey identifies the feature that an AI call belongs to.

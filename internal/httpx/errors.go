@@ -5,7 +5,7 @@ import (
 	"errors"
 	"net/http"
 
-	"studbud/backend/internal/myErrors"
+	"studdle/backend/internal/myErrors"
 )
 
 type errorBody struct {

@@ -6,10 +6,10 @@ import (
 	"testing"
 	"time"
 
-	jwtsigner "studbud/backend/internal/jwt"
-	"studbud/backend/internal/myErrors"
-	"studbud/backend/pkg/gamification"
-	"studbud/backend/testutil"
+	jwtsigner "studdle/backend/internal/jwt"
+	"studdle/backend/internal/myErrors"
+	"studdle/backend/pkg/gamification"
+	"studdle/backend/testutil"
 )
 
 func TestRegisterAndLogin(t *testing.T) {

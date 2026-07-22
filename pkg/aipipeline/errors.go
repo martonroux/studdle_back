@@ -6,7 +6,7 @@ import (
 	"errors"
 	"strings"
 
-	"studbud/backend/internal/myErrors"
+	"studdle/backend/internal/myErrors"
 )
 
 // classifyProviderStartErr wraps raw provider-client errors into sentinel AppErrors.

@@ -13,10 +13,10 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"studbud/backend/internal/aiProvider"
-	"studbud/backend/internal/config"
-	jwtsigner "studbud/backend/internal/jwt"
-	"studbud/backend/testutil"
+	"studdle/backend/internal/aiProvider"
+	"studdle/backend/internal/config"
+	jwtsigner "studdle/backend/internal/jwt"
+	"studdle/backend/testutil"
 )
 
 // aiE2ECtx holds the wired server + tokens + identities for one e2e run.

@@ -3,7 +3,7 @@ package keywordWorker
 import (
 	"testing"
 
-	"studbud/backend/pkg/aipipeline"
+	"studdle/backend/pkg/aipipeline"
 )
 
 func TestPostprocess_LowercasesAndTrims(t *testing.T) {

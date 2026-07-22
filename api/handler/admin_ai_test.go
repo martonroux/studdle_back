@@ -11,13 +11,13 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"studbud/backend/api/handler"
-	"studbud/backend/internal/billing"
-	"studbud/backend/internal/http/middleware"
-	jwtsigner "studbud/backend/internal/jwt"
-	"studbud/backend/pkg/access"
-	pkgbilling "studbud/backend/pkg/billing"
-	"studbud/backend/testutil"
+	"studdle/backend/api/handler"
+	"studdle/backend/internal/billing"
+	"studdle/backend/internal/http/middleware"
+	jwtsigner "studdle/backend/internal/jwt"
+	"studdle/backend/pkg/access"
+	pkgbilling "studdle/backend/pkg/billing"
+	"studdle/backend/testutil"
 )
 
 func TestGrantAIAccess_AdminPathFlipsUserAccess(t *testing.T) {

@@ -3,10 +3,10 @@ package handler
 import (
 	"net/http"
 
-	"studbud/backend/internal/authctx"
-	"studbud/backend/internal/httpx"
-	"studbud/backend/internal/myErrors"
-	"studbud/backend/pkg/collaboration"
+	"studdle/backend/internal/authctx"
+	"studdle/backend/internal/httpx"
+	"studdle/backend/internal/myErrors"
+	"studdle/backend/pkg/collaboration"
 )
 
 // CollaborationHandler exposes the subject-collaboration endpoints.

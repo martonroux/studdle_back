@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"studbud/backend/internal/myErrors"
+	"studdle/backend/internal/myErrors"
 )
 
 // QueryInt64 reads a required int64 query param by name.

@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"studbud/backend/pkg/aipipeline"
-	"studbud/backend/testutil"
+	"studdle/backend/pkg/aipipeline"
+	"studdle/backend/testutil"
 )
 
 func TestReapOrphanedJobs_FlipsLongRunningJobs(t *testing.T) {

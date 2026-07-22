@@ -8,11 +8,11 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"studbud/backend/api/handler"
-	"studbud/backend/internal/http/middleware"
-	jwtsigner "studbud/backend/internal/jwt"
-	"studbud/backend/pkg/friendship"
-	"studbud/backend/testutil"
+	"studdle/backend/api/handler"
+	"studdle/backend/internal/http/middleware"
+	jwtsigner "studdle/backend/internal/jwt"
+	"studdle/backend/pkg/friendship"
+	"studdle/backend/testutil"
 )
 
 // TestFriendshipList_EmptyIsJSONArray is a regression test for SL-5: an empty

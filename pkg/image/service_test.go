@@ -9,9 +9,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"studbud/backend/internal/myErrors"
-	"studbud/backend/internal/storage"
-	"studbud/backend/testutil"
+	"studdle/backend/internal/myErrors"
+	"studdle/backend/internal/storage"
+	"studdle/backend/testutil"
 )
 
 // 1x1 PNG (red pixel).

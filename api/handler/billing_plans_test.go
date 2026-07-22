@@ -9,12 +9,12 @@ import (
 	"testing"
 	"time"
 
-	"studbud/backend/api/handler"
-	internalbilling "studbud/backend/internal/billing"
-	jwtsigner "studbud/backend/internal/jwt"
-	pkgbilling "studbud/backend/pkg/billing"
-	pkguser "studbud/backend/pkg/user"
-	"studbud/backend/testutil"
+	"studdle/backend/api/handler"
+	internalbilling "studdle/backend/internal/billing"
+	jwtsigner "studdle/backend/internal/jwt"
+	pkgbilling "studdle/backend/pkg/billing"
+	pkguser "studdle/backend/pkg/user"
+	"studdle/backend/testutil"
 )
 
 // stubProvider implements internalbilling.PriceProvider with canned data.

@@ -13,9 +13,9 @@ import (
 	"testing"
 	"time"
 
-	"studbud/backend/db_sql"
-	"studbud/backend/internal/config"
-	"studbud/backend/testutil"
+	"studdle/backend/db_sql"
+	"studdle/backend/internal/config"
+	"studdle/backend/testutil"
 )
 
 // testConfig builds a *config.Config wired for integration tests.

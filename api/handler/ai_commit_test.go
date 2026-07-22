@@ -11,13 +11,13 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"studbud/backend/api/handler"
-	"studbud/backend/internal/aiProvider"
-	"studbud/backend/internal/http/middleware"
-	jwtsigner "studbud/backend/internal/jwt"
-	"studbud/backend/pkg/access"
-	"studbud/backend/pkg/aipipeline"
-	"studbud/backend/testutil"
+	"studdle/backend/api/handler"
+	"studdle/backend/internal/aiProvider"
+	"studdle/backend/internal/http/middleware"
+	jwtsigner "studdle/backend/internal/jwt"
+	"studdle/backend/pkg/access"
+	"studdle/backend/pkg/aipipeline"
+	"studdle/backend/testutil"
 )
 
 func TestCommitGeneration_HappyPath(t *testing.T) {

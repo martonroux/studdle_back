@@ -9,7 +9,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"studbud/backend/pkg/aipipeline"
+	"studdle/backend/pkg/aipipeline"
 )
 
 // Runner consumes one claimed job: invokes the AI, post-processes, writes

@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	pkgbilling "studbud/backend/pkg/billing"
-	"studbud/backend/testutil"
+	pkgbilling "studdle/backend/pkg/billing"
+	"studdle/backend/testutil"
 )
 
 func TestGrantCompWithExpiry_PersistsExpiry(t *testing.T) {

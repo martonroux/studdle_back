@@ -7,10 +7,10 @@ import (
 	"testing"
 	"time"
 
-	"studbud/backend/internal/myErrors"
-	"studbud/backend/pkg/access"
-	"studbud/backend/pkg/gamification"
-	"studbud/backend/testutil"
+	"studdle/backend/internal/myErrors"
+	"studdle/backend/pkg/access"
+	"studdle/backend/pkg/gamification"
+	"studdle/backend/testutil"
 )
 
 // TestRecordSessionBumpsStreakAndGoal verifies the first session sets streak=1, fills the

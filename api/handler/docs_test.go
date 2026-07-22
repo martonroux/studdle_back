@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"studbud/backend/api/handler"
+	"studdle/backend/api/handler"
 )
 
 func TestDocs_SpecServesYAML(t *testing.T) {

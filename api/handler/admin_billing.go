@@ -6,11 +6,11 @@ import (
 	"strings"
 	"time"
 
-	"studbud/backend/internal/authctx"
-	"studbud/backend/internal/httpx"
-	"studbud/backend/internal/myErrors"
-	"studbud/backend/pkg/access"
-	"studbud/backend/pkg/billing"
+	"studdle/backend/internal/authctx"
+	"studdle/backend/internal/httpx"
+	"studdle/backend/internal/myErrors"
+	"studdle/backend/pkg/access"
+	"studdle/backend/pkg/billing"
 )
 
 // AdminBillingHandler exposes Spec C admin endpoints.

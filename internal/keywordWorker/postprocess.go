@@ -3,7 +3,7 @@ package keywordWorker
 import (
 	"strings"
 
-	"studbud/backend/pkg/aipipeline"
+	"studdle/backend/pkg/aipipeline"
 )
 
 // postprocess normalizes a model-emitted keyword list.

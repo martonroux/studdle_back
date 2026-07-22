@@ -7,10 +7,10 @@ import (
 	"strconv"
 	"time"
 
-	"studbud/backend/internal/authctx"
-	"studbud/backend/internal/httpx"
-	"studbud/backend/internal/myErrors"
-	"studbud/backend/pkg/exam"
+	"studdle/backend/internal/authctx"
+	"studdle/backend/internal/httpx"
+	"studdle/backend/internal/myErrors"
+	"studdle/backend/pkg/exam"
 )
 
 // ExamHandler exposes exam CRUD endpoints.

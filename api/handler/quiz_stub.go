@@ -3,9 +3,9 @@ package handler
 import (
 	"net/http"
 
-	"studbud/backend/internal/httpx"
-	"studbud/backend/internal/myErrors"
-	"studbud/backend/pkg/quiz"
+	"studdle/backend/internal/httpx"
+	"studdle/backend/internal/myErrors"
+	"studdle/backend/pkg/quiz"
 )
 
 // QuizHandler stubs Spec D endpoints.

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"studbud/backend/internal/myErrors"
+	"studdle/backend/internal/myErrors"
 )
 
 // quotaRow is the per-user per-day counter tuple we read before a call.

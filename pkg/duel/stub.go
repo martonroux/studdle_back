@@ -5,8 +5,8 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"studbud/backend/internal/duelHub"
-	"studbud/backend/internal/myErrors"
+	"studdle/backend/internal/duelHub"
+	"studdle/backend/internal/myErrors"
 )
 
 // Service is the duel facade. Spec E will replace this.

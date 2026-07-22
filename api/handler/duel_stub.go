@@ -3,9 +3,9 @@ package handler
 import (
 	"net/http"
 
-	"studbud/backend/internal/httpx"
-	"studbud/backend/internal/myErrors"
-	"studbud/backend/pkg/duel"
+	"studdle/backend/internal/httpx"
+	"studdle/backend/internal/myErrors"
+	"studdle/backend/pkg/duel"
 )
 
 // DuelHandler stubs Spec E endpoints.

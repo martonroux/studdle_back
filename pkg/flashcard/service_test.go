@@ -4,9 +4,9 @@ import (
 	"context"
 	"testing"
 
-	"studbud/backend/pkg/access"
-	"studbud/backend/pkg/flashcard"
-	"studbud/backend/testutil"
+	"studdle/backend/pkg/access"
+	"studdle/backend/pkg/flashcard"
+	"studdle/backend/testutil"
 )
 
 func TestFlashcardCRUD(t *testing.T) {

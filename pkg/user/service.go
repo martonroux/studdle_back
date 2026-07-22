@@ -11,9 +11,9 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"golang.org/x/crypto/bcrypt"
 
-	jwtsigner "studbud/backend/internal/jwt"
-	"studbud/backend/internal/myErrors"
-	"studbud/backend/pkg/gamification"
+	jwtsigner "studdle/backend/internal/jwt"
+	"studdle/backend/internal/myErrors"
+	"studdle/backend/pkg/gamification"
 )
 
 // Service owns user register, login, profile-picture, and stats.

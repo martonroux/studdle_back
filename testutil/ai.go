@@ -5,7 +5,7 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"studbud/backend/internal/aiProvider"
+	"studdle/backend/internal/aiProvider"
 )
 
 // FakeAIClient replays a fixed sequence of chunks on each Stream call.

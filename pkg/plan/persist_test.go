@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"studbud/backend/testutil"
+	"studdle/backend/testutil"
 )
 
 // TestPersist_WritesGenerationID confirms the generation_id column is populated

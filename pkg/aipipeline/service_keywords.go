@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"studbud/backend/internal/aiProvider"
+	"studdle/backend/internal/aiProvider"
 )
 
 // ExtractInput describes one keyword-extraction request.

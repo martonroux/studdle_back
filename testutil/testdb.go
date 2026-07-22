@@ -9,7 +9,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	dbsql "studbud/backend/db_sql"
+	dbsql "studdle/backend/db_sql"
 )
 
 var (

@@ -9,7 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"golang.org/x/time/rate"
 
-	"studbud/backend/pkg/aipipeline"
+	"studdle/backend/pkg/aipipeline"
 )
 
 // Config tunes the worker. All fields fall back to safe defaults when zero.

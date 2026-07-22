@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"studbud/backend/internal/billing"
-	pkgbilling "studbud/backend/pkg/billing"
-	"studbud/backend/testutil"
+	"studdle/backend/internal/billing"
+	pkgbilling "studdle/backend/pkg/billing"
+	"studdle/backend/testutil"
 )
 
 func TestRefreshFromStripe_AppliesAuthoritativeState(t *testing.T) {

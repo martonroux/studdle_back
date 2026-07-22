@@ -5,8 +5,8 @@ import (
 	"errors"
 	"time"
 
-	"studbud/backend/internal/myErrors"
-	"studbud/backend/pkg/aipipeline"
+	"studdle/backend/internal/myErrors"
+	"studdle/backend/pkg/aipipeline"
 )
 
 // daysBetween returns the inclusive day count from `from` to `to` (date granularity).

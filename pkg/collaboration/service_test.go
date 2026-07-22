@@ -5,10 +5,10 @@ import (
 	"errors"
 	"testing"
 
-	"studbud/backend/internal/myErrors"
-	"studbud/backend/pkg/access"
-	"studbud/backend/pkg/collaboration"
-	"studbud/backend/testutil"
+	"studdle/backend/internal/myErrors"
+	"studdle/backend/pkg/access"
+	"studdle/backend/pkg/collaboration"
+	"studdle/backend/testutil"
 )
 
 // TestInviteFlow covers the happy path: owner creates an invite, invitee redeems,

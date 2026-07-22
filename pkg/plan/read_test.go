@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"studbud/backend/pkg/access"
-	"studbud/backend/pkg/exam"
-	"studbud/backend/testutil"
+	"studdle/backend/pkg/access"
+	"studdle/backend/pkg/exam"
+	"studdle/backend/testutil"
 )
 
 // TestGetPlan_AfterMarkDone is a regression test for AI-2: pgx v5's binary

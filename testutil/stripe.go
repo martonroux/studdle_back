@@ -3,7 +3,7 @@ package testutil
 import (
 	"context"
 
-	"studbud/backend/internal/billing"
+	"studdle/backend/internal/billing"
 )
 
 // FakeBilling is a test double for billing.Client.

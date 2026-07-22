@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"strings"
 
-	"studbud/backend/internal/myErrors"
+	"studdle/backend/internal/myErrors"
 )
 
 // pumpSSE reads Anthropic's SSE stream and forwards input_json_delta payloads as Chunks.

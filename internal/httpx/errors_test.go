@@ -6,7 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"studbud/backend/internal/myErrors"
+	"studdle/backend/internal/myErrors"
 )
 
 func TestWriteErrorMapsSentinels(t *testing.T) {

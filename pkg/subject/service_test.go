@@ -8,10 +8,10 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"studbud/backend/internal/myErrors"
-	"studbud/backend/pkg/access"
-	"studbud/backend/pkg/subject"
-	"studbud/backend/testutil"
+	"studdle/backend/internal/myErrors"
+	"studdle/backend/pkg/access"
+	"studdle/backend/pkg/subject"
+	"studdle/backend/testutil"
 )
 
 func TestSubjectCRUD(t *testing.T) {

@@ -5,8 +5,8 @@ import (
 	"errors"
 	"testing"
 
-	pkgbilling "studbud/backend/pkg/billing"
-	"studbud/backend/testutil"
+	pkgbilling "studdle/backend/pkg/billing"
+	"studdle/backend/testutil"
 )
 
 func TestCreatePortalSession_NoCustomerReturnsErr(t *testing.T) {

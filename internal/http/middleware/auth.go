@@ -4,10 +4,10 @@ import (
 	"net/http"
 	"strings"
 
-	"studbud/backend/internal/authctx"
-	"studbud/backend/internal/httpx"
-	jwtsigner "studbud/backend/internal/jwt"
-	"studbud/backend/internal/myErrors"
+	"studdle/backend/internal/authctx"
+	"studdle/backend/internal/httpx"
+	jwtsigner "studdle/backend/internal/jwt"
+	"studdle/backend/internal/myErrors"
 )
 
 // Auth parses the Bearer token and attaches identity to the request context.

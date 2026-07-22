@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"studbud/backend/internal/myErrors"
+	"studdle/backend/internal/myErrors"
 )
 
 // DecodeJSON parses the request body into dst. Returns ErrInvalidInput on failure.

@@ -5,10 +5,10 @@ import (
 	"strings"
 	"testing"
 
-	"studbud/backend/internal/aiProvider"
-	"studbud/backend/pkg/access"
-	"studbud/backend/pkg/aipipeline"
-	"studbud/backend/testutil"
+	"studdle/backend/internal/aiProvider"
+	"studdle/backend/pkg/access"
+	"studdle/backend/pkg/aipipeline"
+	"studdle/backend/testutil"
 )
 
 func TestRankCrossSubjects_HappyPath(t *testing.T) {

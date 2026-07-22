@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"studbud/backend/internal/myErrors"
+	"studdle/backend/internal/myErrors"
 )
 
 // CheckoutSession is what the frontend redirects a user to.

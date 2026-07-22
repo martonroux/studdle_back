@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"time"
 
-	"studbud/backend/internal/authctx"
+	"studdle/backend/internal/authctx"
 )
 
 type statusRecorder struct {

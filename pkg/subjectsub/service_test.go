@@ -5,10 +5,10 @@ import (
 	"errors"
 	"testing"
 
-	"studbud/backend/internal/myErrors"
-	"studbud/backend/pkg/access"
-	"studbud/backend/pkg/subjectsub"
-	"studbud/backend/testutil"
+	"studdle/backend/internal/myErrors"
+	"studdle/backend/pkg/access"
+	"studdle/backend/pkg/subjectsub"
+	"studdle/backend/testutil"
 )
 
 // TestSubscribeAndList verifies a user can subscribe to a public subject, list

@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"studbud/backend/pkg/search"
-	"studbud/backend/testutil"
+	"studdle/backend/pkg/search"
+	"studdle/backend/testutil"
 )
 
 func TestSearchOwnedSubjects(t *testing.T) {

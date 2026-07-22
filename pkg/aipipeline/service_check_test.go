@@ -5,11 +5,11 @@ import (
 	"errors"
 	"testing"
 
-	"studbud/backend/internal/aiProvider"
-	"studbud/backend/internal/myErrors"
-	"studbud/backend/pkg/access"
-	"studbud/backend/pkg/aipipeline"
-	"studbud/backend/testutil"
+	"studdle/backend/internal/aiProvider"
+	"studdle/backend/internal/myErrors"
+	"studdle/backend/pkg/access"
+	"studdle/backend/pkg/aipipeline"
+	"studdle/backend/testutil"
 )
 
 func TestCheckFlashcard_ReturnsVerdictAndSuggestion(t *testing.T) {

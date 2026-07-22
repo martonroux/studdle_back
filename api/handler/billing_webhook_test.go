@@ -7,12 +7,12 @@ import (
 	"testing"
 	"time"
 
-	"studbud/backend/api/handler"
-	"studbud/backend/internal/billing"
-	jwtsigner "studbud/backend/internal/jwt"
-	pkgbilling "studbud/backend/pkg/billing"
-	pkguser "studbud/backend/pkg/user"
-	"studbud/backend/testutil"
+	"studdle/backend/api/handler"
+	"studdle/backend/internal/billing"
+	jwtsigner "studdle/backend/internal/jwt"
+	pkgbilling "studdle/backend/pkg/billing"
+	pkguser "studdle/backend/pkg/user"
+	"studdle/backend/testutil"
 )
 
 // newBillingHandlerForTest constructs a BillingHandler wired to the given service.

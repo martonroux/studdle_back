@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"studbud/backend/internal/billing"
+	"studdle/backend/internal/billing"
 )
 
 // fakeClient counts GetPrice calls and returns canned PriceData per ID.

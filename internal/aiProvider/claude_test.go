@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"studbud/backend/internal/aiProvider"
+	"studdle/backend/internal/aiProvider"
 )
 
 func TestClaudeProvider_StreamsInputJsonDeltasAsTextChunks(t *testing.T) {

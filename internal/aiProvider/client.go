@@ -3,7 +3,7 @@ package aiProvider
 import (
 	"context"
 
-	"studbud/backend/internal/myErrors"
+	"studdle/backend/internal/myErrors"
 )
 
 // Chunk is one streamed piece of AI output.

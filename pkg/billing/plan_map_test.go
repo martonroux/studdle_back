@@ -3,7 +3,7 @@ package billing_test
 import (
 	"testing"
 
-	pkgbilling "studbud/backend/pkg/billing"
+	pkgbilling "studdle/backend/pkg/billing"
 )
 
 func TestPlanFromPriceID(t *testing.T) {

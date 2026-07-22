@@ -7,10 +7,10 @@ import (
 	"io"
 	"time"
 
-	"studbud/backend/internal/aiProvider"
-	"studbud/backend/internal/myErrors"
-	"studbud/backend/pkg/aipipeline"
-	"studbud/backend/pkg/exam"
+	"studdle/backend/internal/aiProvider"
+	"studdle/backend/internal/myErrors"
+	"studdle/backend/pkg/aipipeline"
+	"studdle/backend/pkg/exam"
 )
 
 // crossSubjectShortlistLimit caps how many candidates the SQL shortlist returns.

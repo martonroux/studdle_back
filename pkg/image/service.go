@@ -11,9 +11,9 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"studbud/backend/internal/aiProvider"
-	"studbud/backend/internal/myErrors"
-	"studbud/backend/internal/storage"
+	"studdle/backend/internal/aiProvider"
+	"studdle/backend/internal/myErrors"
+	"studdle/backend/internal/storage"
 )
 
 // Purpose enumerates upload contexts that gate which MIME types and limits apply.
