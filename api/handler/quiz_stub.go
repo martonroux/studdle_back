@@ -143,6 +143,47 @@ func (h *QuizHandler) CardCounts(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, resp)
 }
 
+// List handles GET /quizzes?subjectId=&limit=&offset=.
+// Returns the caller's quizzes, newest-first, with attempt summaries.
+func (h *QuizHandler) List(w http.ResponseWriter, r *http.Request) {
+	uid := authctx.UID(r.Context())
+	subjectID, err := httpx.QueryOptionalInt64(r, "subjectId")
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	res, err := h.svc.List(r.Context(), quiz.ListRequest{
+		UserID:    uid,
+		SubjectID: subjectID,
+		Limit:     httpx.QueryIntDefault(r, "limit", 0),
+		Offset:    httpx.QueryIntDefault(r, "offset", 0),
+	})
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{
+		"quizzes": res.Quizzes,
+		"total":   res.Total,
+	})
+}
+
+// Delete handles DELETE /quizzes/{id}.
+// Returns 404 for a missing or unowned quiz; 204 on success.
+func (h *QuizHandler) Delete(w http.ResponseWriter, r *http.Request) {
+	uid := authctx.UID(r.Context())
+	qid, err := quizIDFromPath(r)
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	if err := h.svc.Delete(r.Context(), uid, qid); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
 // Start handles POST /quizzes/{id}/start.
 // Returns the existing in-progress attempt (idempotent) or creates a new one.
 func (h *QuizHandler) Start(w http.ResponseWriter, r *http.Request) {
