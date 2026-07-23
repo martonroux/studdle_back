@@ -5,12 +5,16 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"studdle/backend/pkg/aipipeline"
 )
+
+// bookkeepingTimeout bounds the detached job-state write below.
+const bookkeepingTimeout = 5 * time.Second
 
 // Runner consumes one claimed job: invokes the AI, post-processes, writes
 // keyword rows.
@@ -81,29 +85,42 @@ func (r *Runner) run(ctx context.Context, j claimedJob) {
 			return
 		}
 
-		r.markFailed(ctx, j.id, "load_fc:"+err.Error())
+		r.fail(ctx, j.id, "load_fc:"+err.Error())
 		return
 	}
 
 	res, err := r.ai.ExtractKeywords(ctx, *in)
 	if err != nil {
-		r.markFailed(ctx, j.id, "ai:"+err.Error())
+		r.fail(ctx, j.id, "ai:"+err.Error())
 		return
 	}
 
 	cleaned := postprocess(res.Keywords)
 
 	if len(cleaned) == 0 {
-		r.markFailed(ctx, j.id, "empty_after_cleanup")
+		r.fail(ctx, j.id, "empty_after_cleanup")
 		return
 	}
 
 	if err := r.replaceKeywords(ctx, j.fcID, cleaned); err != nil {
-		r.markFailed(ctx, j.id, "store:"+err.Error())
+		r.fail(ctx, j.id, "store:"+err.Error())
 		return
 	}
 
 	r.markDone(ctx, j.id)
+}
+
+// fail records a job failure. When ctx was cancelled (e.g. process shutdown
+// interrupted the AI call or DB write mid-flight) the failure isn't a real
+// extraction problem, so the job is requeued to 'pending' for an immediate
+// retry on next boot rather than permanently marked 'failed'.
+func (r *Runner) fail(ctx context.Context, id int64, reason string) {
+	if ctx.Err() != nil {
+		r.requeueAfterError(ctx, id, reason)
+		return
+	}
+
+	r.markFailed(ctx, id, reason)
 }
 
 // loadFlashcard reads the title/question/answer for the prompt input.
@@ -144,7 +161,10 @@ func (r *Runner) replaceKeywords(ctx context.Context, fcID int64, kws []aipipeli
 
 // markDone flips the job to the 'done' state. Failures are logged.
 func (r *Runner) markDone(ctx context.Context, id int64) {
-	if _, err := r.db.Exec(ctx, sqlMarkDone, id); err != nil {
+	bctx, cancel := detachedContext(ctx)
+	defer cancel()
+
+	if _, err := r.db.Exec(bctx, sqlMarkDone, id); err != nil {
 		log.Printf("keywordWorker: markDone job %d: %v", id, err)
 	}
 }
@@ -152,7 +172,31 @@ func (r *Runner) markDone(ctx context.Context, id int64) {
 // markFailed flips the job to the 'failed' state with the given reason.
 // Failures are logged.
 func (r *Runner) markFailed(ctx context.Context, id int64, reason string) {
-	if _, err := r.db.Exec(ctx, sqlMarkFailed, id, reason); err != nil {
+	bctx, cancel := detachedContext(ctx)
+	defer cancel()
+
+	if _, err := r.db.Exec(bctx, sqlMarkFailed, id, reason); err != nil {
 		log.Printf("keywordWorker: markFailed job %d: %v", id, err)
 	}
+}
+
+// requeueAfterError resets the job to 'pending' (bumping attempts) so it's
+// picked up again immediately, instead of permanently failing it for a
+// transient/environmental interruption.
+func (r *Runner) requeueAfterError(ctx context.Context, id int64, reason string) {
+	bctx, cancel := detachedContext(ctx)
+	defer cancel()
+
+	if _, err := r.db.Exec(bctx, sqlRequeueAfterError, id, reason); err != nil {
+		log.Printf("keywordWorker: requeueAfterError job %d: %v", id, err)
+	}
+}
+
+// detachedContext returns a context that keeps ctx's values but not its
+// cancellation, bounded by bookkeepingTimeout. Job-state writes use this so
+// they still land when ctx was already cancelled by the caller (e.g. process
+// shutdown) — otherwise the write silently no-ops and the job is orphaned in
+// whatever state 'claim' left it in.
+func detachedContext(ctx context.Context) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.WithoutCancel(ctx), bookkeepingTimeout)
 }
