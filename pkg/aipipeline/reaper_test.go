@@ -17,7 +17,7 @@ func TestReapOrphanedJobs_FlipsLongRunningJobs(t *testing.T) {
 	stale := testutil.SeedRunningJob(t, pool, u.ID, "generate_pdf")
 	_, _ = pool.Exec(context.Background(), `UPDATE ai_jobs SET started_at = now() - interval '2 hours' WHERE id = $1`, stale)
 
-	svc := aipipeline.NewService(pool, nil, nil, aipipeline.DefaultQuotaLimits(), "test-model")
+	svc := aipipeline.NewService(pool, nil, nil, aipipeline.DefaultQuotaLimits(), aipipeline.ModelMap{Default: "test-model"})
 	n, err := svc.ReapOrphanedJobs(context.Background())
 	if err != nil {
 		t.Fatalf("reap: %v", err)

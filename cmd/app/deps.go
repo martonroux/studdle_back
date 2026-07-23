@@ -220,11 +220,12 @@ type stubSvcs struct {
 // buildStubServices constructs stub/AI-backed services.
 // The plan service requires the exam service, so domain services are constructed first.
 func buildStubServices(cfg *config.Config, pool *pgxpool.Pool, inf infra, dom domainSvcs) stubSvcs {
-	ai := aipipeline.NewService(pool, inf.aiClient, dom.access, aipipeline.DefaultQuotaLimits(), cfg.AIModel)
+	models := aiModelMap(cfg)
+	ai := aipipeline.NewService(pool, inf.aiClient, dom.access, aipipeline.DefaultQuotaLimits(), models)
 	return stubSvcs{
 		ai:   ai,
 		quiz: quiz.NewService(pool),
-		plan: pkgplan.NewService(pool, ai, dom.exam, dom.image, dom.access, cfg.AIModel),
+		plan: pkgplan.NewService(pool, ai, dom.exam, dom.image, dom.access, models.For(aipipeline.FeatureGenerateRevisionPlan)),
 		duel: duel.NewService(pool, inf.hub),
 		billing: pkgbilling.NewService(pool, inf.billing, pkgbilling.PriceMap{
 			Monthly: cfg.StripePriceProMonth,
@@ -270,13 +271,28 @@ func assembleDeps(cfg *config.Config, pool *pgxpool.Pool, inf infra, dom domainS
 	}
 }
 
-// selectAIClient returns the real ClaudeProvider when an API key is configured
-// and the environment is not "test"; otherwise the NoopClient.
-func selectAIClient(cfg *config.Config) aiProvider.Client {
-	if cfg.Env == "test" || cfg.AnthropicAPIKey == "" {
-		return aiProvider.NoopClient{}
+// aiModelMap converts the config's feature-model table into the pipeline's ModelMap.
+func aiModelMap(cfg *config.Config) aipipeline.ModelMap {
+	perFeature := make(map[aipipeline.FeatureKey]string, len(cfg.AIFeatureModels))
+	for feat, model := range cfg.AIFeatureModels {
+		perFeature[aipipeline.FeatureKey(feat)] = model
 	}
-	return aiProvider.NewClaudeProvider("https://api.anthropic.com", cfg.AnthropicAPIKey)
+	return aipipeline.ModelMap{Default: cfg.AIModel, PerFeature: perFeature}
+}
+
+// selectAIClient returns a Router over the configured vendor clients. Each
+// vendor falls back to the NoopClient when its API key is missing or when
+// ENV=test, matching the previous single-vendor behavior.
+func selectAIClient(cfg *config.Config) aiProvider.Client {
+	anthropic := aiProvider.Client(aiProvider.NoopClient{})
+	if cfg.Env != "test" && cfg.AnthropicAPIKey != "" {
+		anthropic = aiProvider.NewClaudeProvider("https://api.anthropic.com", cfg.AnthropicAPIKey)
+	}
+	openai := aiProvider.Client(aiProvider.NoopClient{})
+	if cfg.Env != "test" && cfg.OpenAIAPIKey != "" {
+		openai = aiProvider.NewOpenAIProvider("https://api.openai.com", cfg.OpenAIAPIKey)
+	}
+	return aiProvider.NewRouter(anthropic, openai)
 }
 
 // selectBillingClient returns the real StripeClient when a secret key is

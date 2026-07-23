@@ -55,7 +55,7 @@ func TestGenerateRevisionPlan_HappyPath(t *testing.T) {
 
 	body := `{"items":[{"date":"2026-06-15","primarySubjectCards":[12],"crossSubjectCards":[],"deeperDives":[]}]}`
 	cli := &testutil.FakeAIClient{Chunks: []aiProvider.Chunk{{Text: body, Done: true}}}
-	svc := aipipeline.NewService(pool, cli, access.NewService(pool), aipipeline.DefaultQuotaLimits(), "claude-test")
+	svc := aipipeline.NewService(pool, cli, access.NewService(pool), aipipeline.DefaultQuotaLimits(), aipipeline.ModelMap{Default: "claude-test"})
 
 	out, err := svc.GenerateRevisionPlan(context.Background(), aipipeline.PlanGenerateInput{
 		UserID:        u.ID,

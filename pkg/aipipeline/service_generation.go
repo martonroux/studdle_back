@@ -107,7 +107,7 @@ func (s *Service) insertJob(ctx context.Context, req AIRequest) (int64, error) {
 	}
 	var jobID int64
 	err = s.db.QueryRow(ctx, sqlInsertAIJob,
-		req.UserID, string(req.Feature), s.model,
+		req.UserID, string(req.Feature), s.models.For(req.Feature),
 		subjectID, flashcardID, req.PDFPages, meta,
 	).Scan(&jobID)
 	if err != nil {
@@ -141,7 +141,7 @@ type streamResult struct {
 func (s *Service) streamOnce(ctx context.Context, req AIRequest, jobID int64, out chan<- AIChunk) streamResult {
 	chunks, err := s.provider.Stream(ctx, aiProvider.Request{
 		FeatureKey: string(req.Feature),
-		Model:      s.model,
+		Model:      s.models.For(req.Feature),
 		Prompt:     req.Prompt,
 		Images:     req.Images,
 		Schema:     req.Schema,

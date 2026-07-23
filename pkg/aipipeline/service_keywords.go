@@ -40,7 +40,7 @@ func (s *Service) ExtractKeywords(ctx context.Context, in ExtractInput) (*Keywor
 	}
 	chunks, err := s.provider.Stream(ctx, aiProvider.Request{
 		FeatureKey: string(FeatureExtractKeywords),
-		Model:      s.model,
+		Model:      s.models.For(FeatureExtractKeywords),
 		Prompt:     prompt,
 		Schema:     extractKeywordsSchema(),
 		MaxTokens:  1024,

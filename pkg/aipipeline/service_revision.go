@@ -41,7 +41,7 @@ func (s *Service) RankCrossSubjects(ctx context.Context, in RankInput) (*RankRes
 
 	chunks, err := s.provider.Stream(ctx, aiProvider.Request{
 		FeatureKey: string(FeatureCrossSubjectRank),
-		Model:      s.model,
+		Model:      s.models.For(FeatureCrossSubjectRank),
 		Prompt:     prompt,
 		Schema:     rankSchema(),
 		MaxTokens:  512,

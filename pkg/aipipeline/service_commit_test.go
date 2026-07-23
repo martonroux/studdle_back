@@ -18,7 +18,7 @@ func TestCommitGeneration_InsertsChaptersAndCardsInOneTx(t *testing.T) {
 	testutil.GiveAIAccess(t, pool, u.ID)
 	subj := testutil.NewSubject(t, pool, u.ID)
 
-	svc := aipipeline.NewService(pool, nil, access.NewService(pool), aipipeline.DefaultQuotaLimits(), "test-model")
+	svc := aipipeline.NewService(pool, nil, access.NewService(pool), aipipeline.DefaultQuotaLimits(), aipipeline.ModelMap{Default: "test-model"})
 	in := aipipeline.CommitInput{
 		UserID:    u.ID,
 		SubjectID: subj.ID,
@@ -54,7 +54,7 @@ func TestCommitGeneration_RollsBackOnFailure(t *testing.T) {
 	testutil.GiveAIAccess(t, pool, u.ID)
 	subj := testutil.NewSubject(t, pool, u.ID)
 
-	svc := aipipeline.NewService(pool, nil, access.NewService(pool), aipipeline.DefaultQuotaLimits(), "test-model")
+	svc := aipipeline.NewService(pool, nil, access.NewService(pool), aipipeline.DefaultQuotaLimits(), aipipeline.ModelMap{Default: "test-model"})
 	in := aipipeline.CommitInput{
 		UserID:    u.ID,
 		SubjectID: subj.ID,
@@ -86,7 +86,7 @@ func TestCommitGeneration_UnknownChapterClientIdIsValidationError(t *testing.T) 
 	testutil.GiveAIAccess(t, pool, u.ID)
 	subj := testutil.NewSubject(t, pool, u.ID)
 
-	svc := aipipeline.NewService(pool, nil, access.NewService(pool), aipipeline.DefaultQuotaLimits(), "test-model")
+	svc := aipipeline.NewService(pool, nil, access.NewService(pool), aipipeline.DefaultQuotaLimits(), aipipeline.ModelMap{Default: "test-model"})
 	in := aipipeline.CommitInput{
 		UserID:    u.ID,
 		SubjectID: subj.ID,
@@ -111,7 +111,7 @@ func TestCommitGeneration_CrossUserSubjectForbidden(t *testing.T) {
 
 	stranger := testutil.NewVerifiedUser(t, pool)
 
-	svc := aipipeline.NewService(pool, nil, access.NewService(pool), aipipeline.DefaultQuotaLimits(), "test-model")
+	svc := aipipeline.NewService(pool, nil, access.NewService(pool), aipipeline.DefaultQuotaLimits(), aipipeline.ModelMap{Default: "test-model"})
 	in := aipipeline.CommitInput{
 		UserID:    stranger.ID,
 		SubjectID: subj.ID,

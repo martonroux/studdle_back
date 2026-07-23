@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"studdle/backend/internal/aiProvider"
 )
 
 // Config holds all runtime settings loaded from environment variables.
@@ -29,8 +31,10 @@ type Config struct {
 
 	UploadDir string // UploadDir is the filesystem root for uploaded images
 
-	AnthropicAPIKey string // AnthropicAPIKey is the Anthropic API key (Spec A)
-	AIModel         string // AIModel is the default model identifier
+	AnthropicAPIKey string            // AnthropicAPIKey is the Anthropic API key (Spec A)
+	OpenAIAPIKey    string            // OpenAIAPIKey is the OpenAI API key
+	AIModel         string            // AIModel is the default model identifier
+	AIFeatureModels map[string]string // AIFeatureModels maps AI feature keys to per-feature model overrides
 
 	KeywordWorkers    int // KeywordWorkers is the number of concurrent keyword-extraction goroutines
 	KeywordRatePerMin int // KeywordRatePerMin is the global keyword-extraction API call cap
@@ -85,7 +89,9 @@ func loadFromEnv() *Config {
 		UploadDir: getEnvDefault("UPLOAD_DIR", "./uploads"),
 
 		AnthropicAPIKey: os.Getenv("ANTHROPIC_API_KEY"),
+		OpenAIAPIKey:    os.Getenv("OPENAI_API_KEY"),
 		AIModel:         getEnvDefault("AI_MODEL", "claude-sonnet-4-6"),
+		AIFeatureModels: loadAIFeatureModels(),
 
 		KeywordWorkers:    getEnvInt("KEYWORD_EXTRACT_WORKERS", 2),
 		KeywordRatePerMin: getEnvInt("KEYWORD_EXTRACT_RATE_PER_MIN", 60),
@@ -99,6 +105,29 @@ func loadFromEnv() *Config {
 
 		AdminBootstrapEmail: os.Getenv("ADMIN_BOOTSTRAP_EMAIL"),
 	}
+}
+
+// aiFeatureModelDefaults maps each AI feature key (see pkg/aipipeline) to its
+// default model override. An empty value means "use AIModel". Every entry is
+// overridable via AI_MODEL_<FEATURE> (e.g. AI_MODEL_GENERATE_PDF).
+var aiFeatureModelDefaults = map[string]string{
+	"generate_prompt":    "",
+	"generate_pdf":       "gpt-5.4-mini",
+	"check_flashcard":    "",
+	"extract_keywords":   "gpt-4.1-nano",
+	"revision_plan":      "",
+	"cross_subject_rank": "",
+	"generate_quiz":      "gpt-5.4-nano",
+}
+
+// loadAIFeatureModels reads the AI_MODEL_<FEATURE> override for every known
+// AI feature, falling back to the built-in defaults.
+func loadAIFeatureModels() map[string]string {
+	out := make(map[string]string, len(aiFeatureModelDefaults))
+	for feat, def := range aiFeatureModelDefaults {
+		out[feat] = getEnvDefault("AI_MODEL_"+strings.ToUpper(feat), def)
+	}
+	return out
 }
 
 // getEnvDefault returns the value of key if set and non-empty, else fallback.
@@ -213,13 +242,39 @@ func validateStripeMode(c *Config) error {
 
 // validateProdRequirements ensures prod-only secrets are present.
 func validateProdRequirements(c *Config) error {
-	if c.AnthropicAPIKey == "" {
-		return fmt.Errorf("ANTHROPIC_API_KEY required in prod")
+	if err := validateAIKeys(c); err != nil {
+		return err
 	}
 	if c.StripeSecretKey == "" || c.StripeWebhookSecret == "" {
 		return fmt.Errorf("Stripe keys required in prod")
 	}
 	return nil
+}
+
+// validateAIKeys requires the API key of every vendor referenced by the
+// resolved model set (default plus per-feature overrides).
+func validateAIKeys(c *Config) error {
+	for _, model := range c.aiModelsInUse() {
+		if aiProvider.IsOpenAIModel(model) {
+			if c.OpenAIAPIKey == "" {
+				return fmt.Errorf("OPENAI_API_KEY required in prod (model %q)", model)
+			}
+		} else if c.AnthropicAPIKey == "" {
+			return fmt.Errorf("ANTHROPIC_API_KEY required in prod (model %q)", model)
+		}
+	}
+	return nil
+}
+
+// aiModelsInUse returns the default model plus every non-empty per-feature override.
+func (c *Config) aiModelsInUse() []string {
+	models := []string{c.AIModel}
+	for _, m := range c.AIFeatureModels {
+		if m != "" {
+			models = append(models, m)
+		}
+	}
+	return models
 }
 
 // splitCSV parses a comma-separated env value into a trimmed, non-empty slice.

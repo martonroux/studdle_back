@@ -109,7 +109,7 @@ func TestRun_InsertsRunningJobBeforeStream(t *testing.T) {
 }
 
 func newPipelineSvc(pool *pgxpool.Pool, cli aiProvider.Client) *aipipeline.Service {
-	return aipipeline.NewService(pool, cli, access.NewService(pool), aipipeline.DefaultQuotaLimits(), "test-model")
+	return aipipeline.NewService(pool, cli, access.NewService(pool), aipipeline.DefaultQuotaLimits(), aipipeline.ModelMap{Default: "test-model"})
 }
 
 func newPromptReq(uid, subjectID int64) aipipeline.AIRequest {

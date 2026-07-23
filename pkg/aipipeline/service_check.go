@@ -109,7 +109,7 @@ func parseCheckOutput(buf []byte) (*CheckOutput, error) {
 func (s *Service) collectStream(ctx context.Context, req AIRequest) ([]byte, error) {
 	chunks, err := s.provider.Stream(ctx, aiProvider.Request{
 		FeatureKey: string(req.Feature),
-		Model:      s.model,
+		Model:      s.models.For(req.Feature),
 		Prompt:     req.Prompt,
 		Schema:     req.Schema,
 		MaxTokens:  2048,

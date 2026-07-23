@@ -120,7 +120,7 @@ func newAICommitServer(t *testing.T, pool *pgxpool.Pool) http.Handler {
 	t.Helper()
 	signer := jwtsigner.NewSigner("a-minimum-32-byte-secret-xxxxxxxxxx", "studbud-test", time.Hour)
 	acc := access.NewService(pool)
-	ai := aipipeline.NewService(pool, aiProvider.NoopClient{}, acc, aipipeline.DefaultQuotaLimits(), "test-model")
+	ai := aipipeline.NewService(pool, aiProvider.NoopClient{}, acc, aipipeline.DefaultQuotaLimits(), aipipeline.ModelMap{Default: "test-model"})
 	h := handler.NewAIHandler(ai)
 	mux := http.NewServeMux()
 	stack := middleware.Chain(middleware.Auth(signer), middleware.RequireVerified())
