@@ -16,22 +16,22 @@ import (
 // Service is the AI pipeline facade.
 type Service struct {
 	db       *pgxpool.Pool     // db is the shared pool
-	provider aiProvider.Client // provider is the Anthropic (or noop) client
+	provider aiProvider.Client // provider is the routing (or noop) AI client
 	access   *access.Service   // access answers entitlement questions
 	limits   QuotaLimits       // limits bounds per-feature daily calls
-	model    string            // model is the provider model identifier
+	models   ModelMap          // models resolves the per-feature model identifier
 }
 
 // NewService constructs a Service. Methods are filled in across later tasks.
-func NewService(db *pgxpool.Pool, provider aiProvider.Client, access *access.Service, limits QuotaLimits, model string) *Service {
-	return &Service{db: db, provider: provider, access: access, limits: limits, model: model}
+func NewService(db *pgxpool.Pool, provider aiProvider.Client, access *access.Service, limits QuotaLimits, models ModelMap) *Service {
+	return &Service{db: db, provider: provider, access: access, limits: limits, models: models}
 }
 
 // NewServiceForTest constructs a minimal Service for tests that exercise the
 // extraction or check primitives without the entitlement / quota plumbing.
-// Production must use NewService.
+// Every feature uses model. Production must use NewService.
 func NewServiceForTest(db *pgxpool.Pool, provider aiProvider.Client, model string) *Service {
-	return &Service{db: db, provider: provider, model: model}
+	return &Service{db: db, provider: provider, models: ModelMap{Default: model}}
 }
 
 // isNoRows returns true when err is pgx's "no rows" sentinel.

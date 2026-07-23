@@ -98,13 +98,75 @@ func TestValidateStripeMode_KeyPrefixMustMatch(t *testing.T) {
 	}
 }
 
+func TestLoadAIFeatureModels_DefaultsAndOverrides(t *testing.T) {
+	clearEnv(t)
+	setEnv(t, minValidEnv())
+	t.Setenv("AI_MODEL_GENERATE_PDF", "claude-haiku-4-5")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got := cfg.AIFeatureModels["generate_pdf"]; got != "claude-haiku-4-5" {
+		t.Errorf("generate_pdf override = %q, want claude-haiku-4-5", got)
+	}
+	if got := cfg.AIFeatureModels["extract_keywords"]; got != "gpt-4.1-nano" {
+		t.Errorf("extract_keywords default = %q, want gpt-4.1-nano", got)
+	}
+	if got := cfg.AIFeatureModels["generate_quiz"]; got != "gpt-5.4-nano" {
+		t.Errorf("generate_quiz default = %q, want gpt-5.4-nano", got)
+	}
+	if got := cfg.AIFeatureModels["check_flashcard"]; got != "" {
+		t.Errorf("check_flashcard default = %q, want empty (falls back to AI_MODEL)", got)
+	}
+}
+
+// TestValidateAIKeys covers key requirements per referenced vendor.
+func TestValidateAIKeys(t *testing.T) {
+	cases := []struct {
+		name         string
+		models       map[string]string
+		anthropicKey string
+		openaiKey    string
+		wantErr      string
+	}{
+		{"both vendors keyed passes", map[string]string{"generate_pdf": "gpt-5.4-mini"}, "sk-ant", "sk-oai", ""},
+		{"openai model without key fails", map[string]string{"generate_pdf": "gpt-5.4-mini"}, "sk-ant", "", "OPENAI_API_KEY"},
+		{"anthropic default without key fails", map[string]string{}, "", "sk-oai", "ANTHROPIC_API_KEY"},
+		{"all-anthropic needs no openai key", map[string]string{"generate_pdf": "claude-haiku-4-5"}, "sk-ant", "", ""},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			c := &Config{
+				AIModel:         "claude-sonnet-4-6",
+				AIFeatureModels: tc.models,
+				AnthropicAPIKey: tc.anthropicKey,
+				OpenAIAPIKey:    tc.openaiKey,
+			}
+			err := validateAIKeys(c)
+			if tc.wantErr == "" {
+				if err != nil {
+					t.Fatalf("expected no error, got %v", err)
+				}
+				return
+			}
+			if err == nil || !strings.Contains(err.Error(), tc.wantErr) {
+				t.Fatalf("err = %v, want substring %q", err, tc.wantErr)
+			}
+		})
+	}
+}
+
 func clearEnv(t *testing.T) {
 	t.Helper()
 	for _, k := range []string{
 		"ENV", "PORT", "FRONTEND_URL", "BACKEND_URL", "DATABASE_URL",
 		"JWT_SECRET", "JWT_ISSUER", "JWT_TTL",
 		"SMTP_HOST", "SMTP_PORT", "SMTP_USER", "SMTP_PASS", "SMTP_FROM",
-		"UPLOAD_DIR", "ANTHROPIC_API_KEY", "AI_MODEL",
+		"UPLOAD_DIR", "ANTHROPIC_API_KEY", "OPENAI_API_KEY", "AI_MODEL",
+		"AI_MODEL_GENERATE_PROMPT", "AI_MODEL_GENERATE_PDF", "AI_MODEL_CHECK_FLASHCARD",
+		"AI_MODEL_EXTRACT_KEYWORDS", "AI_MODEL_REVISION_PLAN", "AI_MODEL_CROSS_SUBJECT_RANK",
+		"AI_MODEL_GENERATE_QUIZ",
 		"STRIPE_MODE", "STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET",
 		"STRIPE_PRICE_PRO_MONTHLY", "STRIPE_PRICE_PRO_ANNUAL",
 		"ADMIN_BOOTSTRAP_EMAIL",

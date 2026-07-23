@@ -13,7 +13,7 @@ import (
 // newKeywordSvc returns a Service wired only with a fake provider and model.
 // db and access are nil because ExtractKeywords never touches them.
 func newKeywordSvc(cli aiProvider.Client) *aipipeline.Service {
-	return aipipeline.NewService(nil, cli, nil, aipipeline.DefaultQuotaLimits(), "claude-test")
+	return aipipeline.NewService(nil, cli, nil, aipipeline.DefaultQuotaLimits(), aipipeline.ModelMap{Default: "claude-test"})
 }
 
 func TestExtractKeywords_HappyPath(t *testing.T) {

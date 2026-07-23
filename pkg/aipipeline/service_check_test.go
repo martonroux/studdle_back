@@ -25,7 +25,7 @@ func TestCheckFlashcard_ReturnsVerdictAndSuggestion(t *testing.T) {
 			{Text: `{"verdict":"ok","findings":[],"suggestion":{"title":"","question":"Q1","answer":"A1"}}`, Done: true},
 		},
 	}
-	svc := aipipeline.NewService(pool, cli, access.NewService(pool), aipipeline.DefaultQuotaLimits(), "test-model")
+	svc := aipipeline.NewService(pool, cli, access.NewService(pool), aipipeline.DefaultQuotaLimits(), aipipeline.ModelMap{Default: "test-model"})
 
 	out, err := svc.CheckFlashcard(context.Background(), aipipeline.CheckInput{
 		UserID:      u.ID,
@@ -63,7 +63,7 @@ func TestCheckFlashcard_CrossUserForbidden(t *testing.T) {
 			{Text: `{"verdict":"ok","findings":[],"suggestion":{"title":"","question":"Q1","answer":"A1"}}`, Done: true},
 		},
 	}
-	svc := aipipeline.NewService(pool, cli, access.NewService(pool), aipipeline.DefaultQuotaLimits(), "test-model")
+	svc := aipipeline.NewService(pool, cli, access.NewService(pool), aipipeline.DefaultQuotaLimits(), aipipeline.ModelMap{Default: "test-model"})
 
 	_, err := svc.CheckFlashcard(context.Background(), aipipeline.CheckInput{
 		UserID:      stranger.ID,
