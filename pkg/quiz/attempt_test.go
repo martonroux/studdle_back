@@ -78,6 +78,54 @@ func TestAnswer_MCQCorrect(t *testing.T) {
 	}
 }
 
+// STU-47: an incorrect fill_blank answer must come back with a usable
+// correctAnswer.value the client can display next to "Correct answer".
+func TestAnswer_FillBlankIncorrect_ReturnsDisplayableCorrectAnswer(t *testing.T) {
+	pool := testutil.OpenTestDB(t)
+	testutil.Reset(t, pool)
+	u := testutil.NewVerifiedUser(t, pool)
+	qid := testutil.NewQuiz(t, pool, u.ID, 0) // quiz shell only, no MCQ questions
+
+	_, err := pool.Exec(context.Background(), `
+		INSERT INTO quiz_questions (quiz_id, ordinal, question_type, stem,
+		                            correct_jsonb, referenced_fc_ids_jsonb)
+		VALUES ($1, 1, 'fill_blank', 'The powerhouse of the cell is the ____.',
+		        '{"accepted":["mitochondrion","mitochondria"]}'::jsonb, '[]'::jsonb)`,
+		qid)
+	if err != nil {
+		t.Fatalf("insert fill_blank question: %v", err)
+	}
+	_, err = pool.Exec(context.Background(),
+		`UPDATE quizzes SET question_count = 1 WHERE id=$1`, qid)
+	if err != nil {
+		t.Fatalf("set question_count: %v", err)
+	}
+
+	svc := quiz.NewService(pool, nil)
+	att, q1, _, err := svc.Start(context.Background(), u.ID, qid)
+	if err != nil {
+		t.Fatalf("start: %v", err)
+	}
+
+	res, err := svc.Answer(context.Background(), u.ID, att.ID,
+		q1.ID, json.RawMessage(`{"value":"wrong guess"}`))
+	if err != nil {
+		t.Fatalf("answer: %v", err)
+	}
+	if res.Correct {
+		t.Fatalf("Correct = true, want false")
+	}
+	var ca struct {
+		Value string `json:"value"`
+	}
+	if err := json.Unmarshal(res.CorrectAnswer, &ca); err != nil {
+		t.Fatalf("unmarshal correctAnswer %s: %v", res.CorrectAnswer, err)
+	}
+	if ca.Value != "mitochondrion" {
+		t.Fatalf("correctAnswer.value = %q, want %q", ca.Value, "mitochondrion")
+	}
+}
+
 func TestAnswer_LastQuestion_CompletesAttempt(t *testing.T) {
 	pool := testutil.OpenTestDB(t)
 	testutil.Reset(t, pool)

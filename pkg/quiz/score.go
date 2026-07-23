@@ -65,6 +65,31 @@ func scoreAnswer(t QuestionType, correct, user json.RawMessage) (bool, error) {
 	return false, fmt.Errorf("%w: unknown question type %q", myErrors.ErrInvalidInput, t)
 }
 
+// publicCorrectAnswer converts the server-only correct payload into the shape
+// clients display. MCQ/T-F already match the wire shape clients expect and
+// pass through unchanged. fill_blank is stored as {"accepted":[...]} (every
+// fuzzy-matched variant, for scoring) but clients render a single answer, so
+// it collapses to {"value": accepted[0]} — the same {value:string} shape
+// used for submitted fill_blank answers.
+func publicCorrectAnswer(t QuestionType, correct json.RawMessage) json.RawMessage {
+	if t != QTypeFillBlank {
+		return correct
+	}
+	var c struct {
+		Accepted []string `json:"accepted"`
+	}
+	if err := json.Unmarshal(correct, &c); err != nil || len(c.Accepted) == 0 {
+		return correct
+	}
+	out, err := json.Marshal(struct {
+		Value string `json:"value"`
+	}{Value: c.Accepted[0]})
+	if err != nil {
+		return correct
+	}
+	return out
+}
+
 // normalizeFillBlank lower-cases, trims outer whitespace, and strips Unicode punctuation.
 // Inner whitespace is preserved (so "the cell" still differs from "thecell").
 func normalizeFillBlank(s string) string {

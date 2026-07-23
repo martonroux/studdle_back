@@ -154,7 +154,7 @@ func (s *Service) Answer(ctx context.Context, uid, attemptID, questionID int64, 
 	}
 	return AnswerResult{
 		Correct:       correct,
-		CorrectAnswer: q.CorrectJSON,
+		CorrectAnswer: publicCorrectAnswer(q.Type, q.CorrectJSON),
 		Explanation:   q.Explanation,
 		Next:          next,
 	}, nil

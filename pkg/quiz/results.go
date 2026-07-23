@@ -56,12 +56,13 @@ func (s *Service) GetAttempt(ctx context.Context, uid, attemptID int64) (Attempt
 	var qs []QuestionReview
 	for rows.Next() {
 		var r QuestionReview
-		var opts, ans []byte
+		var opts, ans, correctRaw []byte
 		var correct *bool
 		if err := rows.Scan(&r.ID, &r.Ordinal, &r.Type, &r.Stem,
-			&opts, &r.CorrectAnswer, &r.Explanation, &ans, &correct); err != nil {
+			&opts, &correctRaw, &r.Explanation, &ans, &correct); err != nil {
 			return AttemptView{}, fmt.Errorf("scan review row:\n%w", err)
 		}
+		r.CorrectAnswer = publicCorrectAnswer(r.Type, correctRaw)
 		if opts != nil {
 			r.Options = json.RawMessage(opts)
 		}
