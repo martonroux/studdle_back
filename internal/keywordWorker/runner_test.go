@@ -2,6 +2,7 @@ package keywordWorker
 
 import (
 	"context"
+	"database/sql"
 	"testing"
 	"time"
 
@@ -22,6 +23,15 @@ func (f *fakeProv) Stream(_ context.Context, _ aiProvider.Request) (<-chan aiPro
 	close(ch)
 
 	return ch, nil
+}
+
+// blockingProv never yields a chunk, forcing callers to observe ctx
+// cancellation (used to simulate a job interrupted by shutdown).
+type blockingProv struct{}
+
+// Stream returns a channel that never produces a value.
+func (b *blockingProv) Stream(_ context.Context, _ aiProvider.Request) (<-chan aiProvider.Chunk, error) {
+	return make(chan aiProvider.Chunk), nil
 }
 
 func TestRunOnce_HappyPath(t *testing.T) {
@@ -103,6 +113,49 @@ func TestRunOnce_EmptyAfterCleanupMarksFailed(t *testing.T) {
 
 	if state != "failed" || lastErr != "empty_after_cleanup" {
 		t.Errorf("want failed/empty_after_cleanup, got %s/%s", state, lastErr)
+	}
+}
+
+// TestRun_ContextCanceledRequeuesInsteadOfOrphaning reproduces STU-65: a job
+// interrupted by shutdown (ctx cancelled mid-run) must land back in 'pending'
+// so it's retried on next boot, not silently left stuck in 'running' forever
+// because the failure-bookkeeping write itself uses the same cancelled ctx.
+func TestRun_ContextCanceledRequeuesInsteadOfOrphaning(t *testing.T) {
+	pool := testutil.OpenTestDB(t)
+	testutil.Reset(t, pool)
+
+	uid := testutil.NewVerifiedUser(t, pool).ID
+	subj := testutil.NewSubject(t, pool, uid)
+	fcID := testutil.NewFlashcard(t, pool, subj.ID, 0, "Q", "A")
+
+	if err := NewEnqueuer(pool).EnqueueForFlashcard(context.Background(), fcID, PriorityUser); err != nil {
+		t.Fatal(err)
+	}
+
+	ai := aipipeline.NewServiceForTest(pool, &blockingProv{}, "claude-test")
+	r := NewRunner(pool, ai)
+
+	jobs, err := r.claim(context.Background(), 1)
+	if err != nil || len(jobs) != 1 {
+		t.Fatalf("claim: err=%v jobs=%d", err, len(jobs))
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel() // simulate shutdown signal firing mid-job
+
+	r.run(ctx, jobs[0])
+
+	var state string
+
+	var lastErr sql.NullString
+
+	if err := pool.QueryRow(context.Background(),
+		`SELECT state, last_error FROM ai_extraction_jobs WHERE fc_id=$1`, fcID).Scan(&state, &lastErr); err != nil {
+		t.Fatal(err)
+	}
+
+	if state != "pending" {
+		t.Errorf("want job requeued to 'pending' after ctx cancellation, got %q (last_error=%v)", state, lastErr)
 	}
 }
 
