@@ -76,6 +76,27 @@ type generateRequest struct {
 	// PlanContext is added in Plan D2.
 }
 
+// decodeGenerateRequest parses + maps the POST /quizzes/generate(/stream) body.
+func decodeGenerateRequest(r *http.Request, uid int64) (quiz.GenerateRequest, error) {
+	var body generateRequest
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		return quiz.GenerateRequest{}, fmt.Errorf("%w: %s", myErrors.ErrInvalidInput, err)
+	}
+	types := make([]quiz.QuestionType, 0, len(body.Types))
+	for _, t := range body.Types {
+		types = append(types, quiz.QuestionType(t))
+	}
+	return quiz.GenerateRequest{
+		UserID:     uid,
+		SubjectID:  body.SubjectID,
+		ChapterID:  body.ChapterID,
+		Kind:       quiz.Kind(body.Kind),
+		Size:       body.Size,
+		Types:      types,
+		CardFilter: quiz.CardFilter(body.CardFilter),
+	}, nil
+}
+
 // Generate handles POST /quizzes/generate.
 func (h *QuizHandler) Generate(w http.ResponseWriter, r *http.Request) {
 	uid := authctx.UID(r.Context())
@@ -84,24 +105,10 @@ func (h *QuizHandler) Generate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var body generateRequest
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		httpx.WriteError(w, fmt.Errorf("%w: %s", myErrors.ErrInvalidInput, err))
+	req, err := decodeGenerateRequest(r, uid)
+	if err != nil {
+		httpx.WriteError(w, err)
 		return
-	}
-
-	types := make([]quiz.QuestionType, 0, len(body.Types))
-	for _, t := range body.Types {
-		types = append(types, quiz.QuestionType(t))
-	}
-	req := quiz.GenerateRequest{
-		UserID:     uid,
-		SubjectID:  body.SubjectID,
-		ChapterID:  body.ChapterID,
-		Kind:       quiz.Kind(body.Kind),
-		Size:       body.Size,
-		Types:      types,
-		CardFilter: quiz.CardFilter(body.CardFilter),
 	}
 	res, err := h.svc.Generate(r.Context(), req)
 	if err != nil {
@@ -113,6 +120,47 @@ func (h *QuizHandler) Generate(w http.ResponseWriter, r *http.Request) {
 		"questionCount": res.QuestionCount,
 		"kind":          res.Kind,
 	})
+}
+
+// GenerateStream handles POST /quizzes/generate/stream — the SSE counterpart
+// to Generate. Mirrors AIHandler.GenerateFromPrompt: emits a "progress" event
+// per validated question ({index, size}), then a terminal "done" event
+// carrying the same payload shape as Generate's JSON response, or an "error"
+// event on failure.
+func (h *QuizHandler) GenerateStream(w http.ResponseWriter, r *http.Request) {
+	uid := authctx.UID(r.Context())
+	if err := h.requireAIAccess(r.Context(), uid); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+
+	req, err := decodeGenerateRequest(r, uid)
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+
+	setSSEHeaders(w)
+	flusher, _ := w.(http.Flusher)
+	for p := range h.svc.GenerateStream(r.Context(), req) {
+		forwardQuizProgressToSSE(w, flusher, p)
+	}
+}
+
+// forwardQuizProgressToSSE maps a quiz.GenerateProgress to a named SSE event.
+func forwardQuizProgressToSSE(w http.ResponseWriter, flusher http.Flusher, p quiz.GenerateProgress) {
+	switch p.Kind {
+	case quiz.GenerateProgressItem:
+		writeSSE(w, flusher, "progress", map[string]any{"index": p.Index, "size": p.Size})
+	case quiz.GenerateProgressDone:
+		writeSSE(w, flusher, "done", map[string]any{
+			"quizId":        p.Result.QuizID,
+			"questionCount": p.Result.QuestionCount,
+			"kind":          p.Result.Kind,
+		})
+	case quiz.GenerateProgressError:
+		writeSSE(w, flusher, "error", errorPayload(p.Err))
+	}
 }
 
 // CardCounts handles GET /quizzes/card-counts?subjectId=X[&chapterId=Y].

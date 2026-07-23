@@ -1,6 +1,7 @@
 package quiz
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 
@@ -10,7 +11,9 @@ import (
 
 // drainQuestions consumes the AI chunk channel into RawQuestion rows.
 // Validates each item; rejects the run if the total count != wantSize.
-func drainQuestions(ch <-chan aipipeline.AIChunk, wantSize int) ([]RawQuestion, error) {
+// progress may be nil; when set, one GenerateProgressItem event is sent per
+// validated question (see GenerateStream).
+func drainQuestions(ctx context.Context, ch <-chan aipipeline.AIChunk, wantSize int, progress chan<- GenerateProgress) ([]RawQuestion, error) {
 	var out []RawQuestion
 	for chunk := range ch {
 		switch chunk.Kind {
@@ -20,6 +23,11 @@ func drainQuestions(ch <-chan aipipeline.AIChunk, wantSize int) ([]RawQuestion, 
 				return nil, err
 			}
 			out = append(out, rq)
+			if progress != nil {
+				emitProgress(ctx, progress, GenerateProgress{
+					Kind: GenerateProgressItem, Index: len(out), Size: wantSize,
+				})
+			}
 		case aipipeline.ChunkError:
 			return nil, chunk.Err
 		}
